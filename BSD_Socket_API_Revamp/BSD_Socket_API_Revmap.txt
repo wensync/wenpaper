@@ -13,41 +13,23 @@ Expires: August 5, 2017
 
 Abstract
 
-   This memo describes new API for network sockets.  Compared to classic
-   BSD socket API the new API is much more lightweight and flexible.
-   Its primary focus is on easy composability of network protocols.
+   This memo describes new API for network sockets.  Compared to classic BSD socket API the new API is much more lightweight and flexible. Its primary focus is on easy composability of network protocols.
 
 Status of This Memo
 
-   This Internet-Draft is submitted in full conformance with the
-   provisions of BCP 78 and BCP 79.
+   This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.
 
-   Internet-Drafts are working documents of the Internet Engineering
-   Task Force (IETF).  Note that other groups may also distribute
-   working documents as Internet-Drafts.  The list of current Internet-
-   Drafts is at http://datatracker.ietf.org/drafts/current/.
+   Internet-Drafts are working documents of the Internet Engineering Task Force (IETF).  Note that other groups may also distribute working documents as Internet-Drafts.  The list of current Internet-Drafts is at http://datatracker.ietf.org/drafts/current/.
 
-   Internet-Drafts are draft documents valid for a maximum of six months
-   and may be updated, replaced, or obsoleted by other documents at any
-   time.  It is inappropriate to use Internet-Drafts as reference
-   material or to cite them other than as "work in progress."
+   Internet-Drafts are draft documents valid for a maximum of six months and may be updated, replaced, or obsoleted by other documents at any time.  It is inappropriate to use Internet-Drafts as reference material or to cite them other than as "work in progress."
 
    This Internet-Draft will expire on August 5, 2017.
 
 Copyright Notice
 
-   Copyright (c) 2017 IETF Trust and the persons identified as the
-   document authors.  All rights reserved.
+   Copyright (c) 2017 IETF Trust and the persons identified as the document authors.  All rights reserved.
 
-   This document is subject to BCP 78 and the IETF Trust's Legal
-   Provisions Relating to IETF Documents
-   (http://trustee.ietf.org/license-info) in effect on the date of
-   publication of this document.  Please review these documents
-   carefully, as they describe your rights and restrictions with respect
-   to this document.  Code Components extracted from this document must
-   include Simplified BSD License text as described in Section 4.e of
-   the Trust Legal Provisions and are provided without warranty as
-   described in the Simplified BSD License.
+   This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info) in effect on the date of publication of this document.  Please review these documents carefully, as they describe your rights and restrictions with respect to this document.  Code Components extracted from this document must include Simplified BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Simplified BSD License.
 
 
 
@@ -97,14 +79,8 @@ Table of Contents
 
 1.  Introduction
 
-   The progress in the area of network protocols is distinctively
-   lagging behind.  While every hobbyist writes and publishes their
-   small JavaScript libraries, there's no such thing going on with
-   network protocols.  Indeed, it looks like the field of network
-   protocols is dominated by big companies and academia, just like
-   programming as a whole used to be before the advent of personal
-   computers.
-
+   The progress in the area of network protocols is distinctively lagging behind.  While every hobbyist writes and publishes their small JavaScript libraries, there's no such thing going on with network protocols.  Indeed, it looks like the field of network protocols is dominated by big companies and academia, just like programming as a whole used to be before the advent of personal computers.
+网络协议领域的进展明显滞后。虽然每个爱好者都编写和发布他们的小型JavaScript库，但是网络协议没有这样的事情发生。事实上，网络协议领域似乎是由大公司和学术界主导的，就像个人电脑出现之前的整个编程一样。
 
 
 
@@ -114,97 +90,45 @@ Sustrik                  Expires August 5, 2017                 [Page 2]
 Internet-Draft            BSD Socket API Revamp            February 2017
 
 
-   While social and political reasons may be partly to blame (adoption,
-   interoperability etc.) the technology itself creates a huge barrier
-   to popular participation.  For example, the fact that huge part of
-   the networking stack typically lives in the kernel space will prevent
-   most people from even trying.  More importantly though there is
-   basically no way to reuse what already exists.  While in JavaScript
-   world you can get other people's libraries, quickly glue them
-   together, add a bit of code of your own and publish a shiny new
-   library, you can't do the same thing with network protocols.  You
-   can't take framing from WebSockets, add multihoming from SCTP, keep-
-   alives from TCP and congestion control from DCCP.  You have to write
-   most of the code yourself which requires a lot of time, often more
-   than a single programmer can realistically afford.
+   While social and political reasons may be partly to blame (adoption, interoperability etc.) the technology itself creates a huge barrier to popular participation.  For example, the fact that huge part of the networking stack typically lives in the kernel space will prevent most people from even trying.  More importantly though there is basically no way to reuse what already exists.  While in JavaScript world you can get other people's libraries, quickly glue them together, add a bit of code of your own and publish a shiny new library, you can't do the same thing with network protocols.  You can't take framing from WebSockets, add multihoming from SCTP, keep-alives from TCP and congestion control from DCCP.  You have to write most of the code yourself which requires a lot of time, often more than a single programmer can realistically afford.
+虽然社会和政治原因可能部分要归咎于(采用、互操作性等)，但技术本身对公众参与造成了巨大障碍。例如，网络堆栈的很大一部分通常位于内核空间，这将使大多数人甚至无法尝试。更重要的是，基本上没有办法重用已经存在的东西。在JavaScript世界中，您可以获得其他人的库，快速地将它们粘合在一起，添加一些您自己的代码，并发布一个闪亮的新库，但是您不能对网络协议做同样的事情。您不能从WebSocket中获取框架、从SCTP添加多主机化、不能从TCP中保持生命和从DCCP获得拥塞控制。您必须自己编写大部分代码，这需要大量的时间，通常比单个程序员实际所能负担的还要多。
 
-   This memo proposes to fix the reusability problem by revamping the
-   old BSD socket API and while doing so strongly focusing on
-   composability of protocols.
+   This memo proposes to fix the reusability problem by revamping the old BSD socket API and while doing so strongly focusing on composability of protocols.
+这份备忘录建议通过修改旧的BSD套接字API来解决可重用性问题，同时大力关注协议的可组合性。
 
 2.  Terminology
 
-   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
-   "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
-   document are to be interpreted as described in RFC 2119.
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
 
 3.  The problems
 
-   This section offers a brief summary of the problems that protocol
-   implementors are facing in the current environment.
+   This section offers a brief summary of the problems that protocol implementors are facing in the current environment.
+本节简要总结了协议实现者在当前环境中面临的问题。
 
-   o  The hook-in API to implement new protocols and make them
-      accessible via standard functions like send() and recv() exists,
-      in most cases, only in the kernel space.  While that makes
-      implementation a little bit harder the real problem is deployment.
-      Kernel is rarely deployed with the application and waiting for a
-      kernel implementation of a protocol to be widely deployed can take
-      many years.
+   o  The hook-in API to implement new protocols and make them    accessible via standard functions like send() and recv() exists, in most cases, only in the kernel space.  While that makes implementation a little bit harder the real problem is deployment. Kernel is rarely deployed with the application and waiting for a kernel implementation of a protocol to be widely deployed can take many years.
+在大多数情况下，实现新协议并通过标准函数(如send()和recv())访问这些协议的挂钩API只存在于内核空间中。虽然这使得实现更加困难，但真正的问题是部署。内核很少与应用程序一起部署，等待协议的内核实现被广泛部署可能需要很多年。
 
-   o  The API hook-in API is not standardized meaning that a protocol
-      has to be implemented for each operating system separately.
+   o  The API hook-in API is not standardized meaning that a protocol has to be implemented for each operating system separately.
+API挂钩API不是标准化的，这意味着必须为每个操作系统分别实现协议。
 
-   o  The usability of the original blocking BSD socket API is dependent
-      one operating system's ability to spawn a lot of threads (e.g. two
-      per TCP connection) and switch between them quickly.  This happens
-      not to be the case with majority of operating systems.  The thread
-      number limit tends to be couple of thousand and the context switch
-      latency is often one or two orders of magnitude higher than what
-      would be acceptable for high-performance networking.  This leads
-      to proliferation of asynchronous network code using non-blocking
+   o  The usability of the original blocking BSD socket API is dependent one operating system's ability to spawn a lot of threads (e.g. two per TCP connection) and switch between them quickly.  This happens not to be the case with majority of operating systems.  The thread number limit tends to be couple of thousand and the context switch latency is often one or two orders of magnitude higher than what would be acceptable for high-performance networking.  This leads to proliferation of asynchronous network code using non-blocking APIs like poll() which forces the implementor to do both CPU and network scheduling by hand.  High context switch latency is often fought by extreme measures.  For example, by implementing hand-crafted lock-free algorithms.  Ugly, mislayered and barely maintainable code ensues.
+原始阻塞BSD套接字API的可用性取决于一个操作系统是否能够产生大量线程(例如，每个TCP连接两个线程)并在它们之间快速切换。在大多数操作系统中，情况恰好不是这样。线程数量限制往往是几千个，上下文切换延迟通常比高性能网络所能接受的高出一两个数量级。这导致使用非阻塞API(如poll())的异步网络代码激增，这迫使实现者手动执行CPU和网络调度。高上下文切换延迟通常是通过极端措施来对抗的。例如，通过实现手工构建的无锁算法.。接下来是丑陋的、分层错误的和难以维护的代码。
 
+   o  The BSD socket API is semantically underspecified.  The particular points of pain are error handling and behaviour during protocol shutdown.  No fixed semantics to rely on means that higher level protocols are fine-tuned to work with a particular low level protocol (e.g.  TCP) and don't allow to switch it for a different low-level protocol.  The situation is made worse by offering a high number of socket options that modify semantics of the core APIs.
+BSD套接字API在语义上是低级的。 在协议关闭期间，疼痛的特定点是错误处理和行为。 没有固定的语义依赖，意味着更高级别的协议被微调成与特定的低级别协议（例如TCP）一起工作，并且不允许将其切换为不同的低级别协议。 通过提供大量修改核心API语义的套接字选项，情况变得更糟。
 
+   o  Scope of BSD socket API is unnecessarily wide.  It attempts to provide standardized way for doing things that would better be done in a customized way.  This results in unnecessarily complex system of extension points: Socket options, ancillary data, fcntl(), various arguments to socket() function.
+BSD 套接字 API 的范围不必要地广泛。 它试图提供标准化的方式做的事情, 最好是以定制的方式做。这导致了不必要的复杂的扩展点系统: 套接字选项、辅助数据、fcntl()、各种参数到 socket() 函数。
 
-Sustrik                  Expires August 5, 2017                 [Page 3]
-
-Internet-Draft            BSD Socket API Revamp            February 2017
-
-
-      APIs like poll() which forces the implementor to do both CPU and
-      network scheduling by hand.  High context switch latency is often
-      fought by extreme measures.  For example, by implementing hand-
-      crafted lock-free algorithms.  Ugly, mislayered and barely
-      maintainable code ensues.
-
-   o  The BSD socket API is semantically underspecified.  The particular
-      points of pain are error handling and behaviour during protocol
-      shutdown.  No fixed semantics to rely on means that higher level
-      protocols are fine-tuned to work with a particular low level
-      protocol (e.g.  TCP) and don't allow to switch it for a different
-      low-level protocol.  The situation is made worse by offering a
-      high number of socket options that modify semantics of the core
-      APIs.
-
-   o  Scope of BSD socket API is unnecessarily wide.  It attempts to
-      provide standardized way for doing things that would better be
-      done in a customized way.  This results in unnecessarily complex
-      system of extension points: Socket options, ancillary data,
-      fcntl(), various arguments to socket() function.
-
-   o  Finally, there are some minor ways to improve the socket API
-      which, however, are not a sufficient reason to revamp the API.
-      But if the revamp is to be done anyway these minor issues can be
-      fixed.
+   o  Finally, there are some minor ways to improve the socket API which, however, are not a sufficient reason to revamp the API. But if the revamp is to be done anyway these minor issues can be fixed.
+最后，还有一些改进套接字API的小方法，但这并不是改进API的充分理由。但是，如果改革要做，这些小问题都可以解决。
 
 4.  Basic concepts
 
 4.1.  Vertical composability
 
-   Vertical composability is an ability to stack protocols one on the
-   top of another.  From the network point of view the protocol on the
-   top is a payload of the protocol on the bottom.  From the API point
-   of view the top protocol encapsulates the bottom protocol, very much
-   like a function encapsulates another function that it calls.
+   Vertical composability is an ability to stack protocols one on the top of another.  From the network point of view the protocol on the top is a payload of the protocol on the bottom.  From the API point of view the top protocol encapsulates the bottom protocol, very much like a function encapsulates another function that it calls.
+垂直可组合性是将协议堆叠在另一个之上的能力。 从网络的角度来看，顶部的协议是底部协议的负载。 从API的角度来看，顶层协议封装底层协议，就像一个函数封装了它所调用的另一个函数。
 
    Example of vertical stack of protocols:
 
@@ -228,16 +152,10 @@ Internet-Draft            BSD Socket API Revamp            February 2017
 
 4.2.  Horizontal composability
 
-   Horizontal composability is an ability to execute protocols in
-   sequential manner.  From the network point of view one type of
-   communication ends and is replaced by another type of communication.
-   From API point of view one protocol is terminated and another one is
-   started, reusing the same underlying protocol, very much like a
-   function can call two child functions in sequence without having to
-   exit itself.
+   Horizontal composability is an ability to execute protocols in sequential manner.  From the network point of view one type of communication ends and is replaced by another type of communication. From API point of view one protocol is terminated and another one is started, reusing the same underlying protocol, very much like a function can call two child functions in sequence without having to exit itself.
+水平组合性是以顺序方式执行协议的能力。 从网络的角度来看，一种通信结束了，并被另一种通信所取代。 从API的角度来看，一个协议终止，另一个协议被启动，重用相同的底层协议，就像一个函数可以依次调用两个子函数，而不必退出本身。
 
-   An example of horizontal composability is how typical web page is
-   trasferred by first doing HTTP handshake, followed by HTML body:
+   An example of horizontal composability is how typical web page is trasferred by first doing HTTP handshake, followed by HTML body:
 
                   +-----------------------------------+
                   |   HTTP   |          HTML          |
@@ -245,17 +163,11 @@ Internet-Draft            BSD Socket API Revamp            February 2017
                   |                TCP                |
                   +-----------------------------------+
 
-   Note how this design makes protocol reusable: The same HTTP handshake
-   can be used, for example, to initiate a WebSocket session.
+   Note how this design makes protocol reusable: The same HTTP handshake can be used, for example, to initiate a WebSocket session.
 
-   Another example of horizontal composability is how STARTTLS switches
-   non-encrypted protocol into encrypted version of the same protocol.
+   Another example of horizontal composability is how STARTTLS switches non-encrypted protocol into encrypted version of the same protocol.
 
-   While these are very visible cases of composing protocols
-   horizontally, the technique is in fact ubiquitous.  For example, most
-   protocols are composed from three distinct mini-protocols: protocol
-   header (initial handshake), protocol body (sending data back and
-   forth) and protocol footer (terminal handshake):
+   While these are very visible cases of composing protocols horizontally, the technique is in fact ubiquitous.  For example, most protocols are composed from three distinct mini-protocols: protocol header (initial handshake), protocol body (sending data back and forth) and protocol footer (terminal handshake):
 
                   +-----------------------------------+
                   | Header |       Body      | Footer |
@@ -267,179 +179,90 @@ Internet-Draft            BSD Socket API Revamp            February 2017
 
 4.3.1.  Application protocols
 
-   Application protocols live on the top of the network stack.  Rather
-   than trasferring raw data they are meant to perform a specific
-   service for the user.  For example, DNS protocol provides name
-   resolution service.
+   Application protocols live on the top of the network stack.  Rather than trasferring raw data they are meant to perform a specific service for the user.  For example, DNS protocol provides name resolution service.
+应用程序协议位于网络堆栈的顶部。它们不是转移原始数据，而是要为用户执行特定的服务。例如，DNS协议提供名称解析服务。
 
-   Application protocols don't give user a way to send or receive data.
-   They have no standardized API for sending or receiving.  Still, they
-
-
-
-Sustrik                  Expires August 5, 2017                 [Page 5]
-
-Internet-Draft            BSD Socket API Revamp            February 2017
-
-
-   can be initialized, terminated and layered on top of other protocols.
-   That being the case, relevant parts of this specification still apply
-   to them.
+   Application protocols don't give user a way to send or receive data. They have no standardized API for sending or receiving.  Still, they can be initialized, terminated and layered on top of other protocols. That being the case, relevant parts of this specification still apply to them.
+应用程序协议不给用户发送或接收数据的方法。他们没有标准的API来发送或接收。但是，它们可以被初始化、终止和分层在其他协议之上。在这种情况下，本规范的相关部分仍然适用于它们。
 
 4.3.2.  Presentation protocols
 
-   Presentation protocols add structure to data carried by transport
-   protocols (e.g.  ASN.1, JSON, XML).  This proposal doesn't address
-   them in any way.  Either the protocol sends and receives binary data
-   that just happen to be in a structured format in which case it's a
-   standard transport protocol.  Or the protocol exposes special API to
-   browse the structured data in which case it should be treated as an
-   application protocol.
+   Presentation protocols add structure to data carried by transport protocols (e.g.  ASN.1, JSON, XML).  This proposal doesn't address them in any way.  Either the protocol sends and receives binary data that just happen to be in a structured format in which case it's a standard transport protocol.  Or the protocol exposes special API to browse the structured data in which case it should be treated as an application protocol.
+表示协议为传输协议(例如ASN.1、JSON、XML)所携带的数据添加了结构。这个提议根本没有解决这些问题。协议发送和接收二进制数据，这些数据恰好是结构化格式，在这种情况下，它是一个标准的传输协议。或者，该协议公开特殊的API来浏览结构化数据，在这种情况下，应该将其视为应用程序协议。
 
 4.3.3.  Transport protocols
 
-   The term "transport protocol" in this memo has broader scope than
-   "OSI L4 protocol".  By "transport protocol" we mean anything capable
-   of sending and/or receiving unstructured data, be it TCP, IP or
-   Ethernet.
+   The term "transport protocol" in this memo has broader scope than "OSI L4 protocol".  By "transport protocol" we mean anything capable of sending and/or receiving unstructured data, be it TCP, IP or Ethernet.
+本备忘录中的“传输协议”比“OSI L4协议”的范围更广。“传输协议”是指任何能够发送和/或接收非结构化数据的内容，无论是TCP、IP还是以太网。
 
 4.4.  Bytestream and message protocols
 
-   Byte stream protocols are transport protocols that define no message
-   boundaries.  One peer can send 10 bytes, then 8 bytes.  The other
-   peer can read all 18 bytes at once or read 12 bytes first, 6 bytes
-   second.  Bytestream protocols are always reliable (no bytes can be
-   lost) and ordered (bytes are received in the same order they were
-   sent in).  TCP is a classic example of bytestream protocol.
+   Byte stream protocols are transport protocols that define no message boundaries.  One peer can send 10 bytes, then 8 bytes.  The other peer can read all 18 bytes at once or read 12 bytes first, 6 bytes second.  Bytestream protocols are always reliable (no bytes can be lost) and ordered (bytes are received in the same order they were sent in).  TCP is a classic example of bytestream protocol.
+字节流协议是不定义消息边界的传输协议。一个对等体可以发送10个字节，然后8个字节。另一方可以一次读取全部18个字节，或者先读取12个字节，再读取6个字节。字节流协议总是可靠的（没有字节可以丢失）并且是有序的（字节按照它们被发送的相同顺序被接收）。 TCP是bytestream协议的典型例子。
 
-   Message protocols are transport protocols that preserve message
-   boundaries.  While message protocols are not necessarily reliable
-   (messages can be lost) or ordered (messages can be received in
-   different order than they were sent in) they are always atomic.  User
-   will receive either complete message or no message.  IP, UDP and
-   WebSockets are examples of message protocols.
+   Message protocols are transport protocols that preserve message boundaries.  While message protocols are not necessarily reliable (messages can be lost) or ordered (messages can be received in different order than they were sent in) they are always atomic.  User will receive either complete message or no message.  IP, UDP and WebSockets are examples of message protocols.
+消息协议是保留消息边界的传输协议。虽然消息协议不一定是可靠的（消息可能丢失）或有序的（消息可以以不同的顺序接收），但它们总是原子的。用户将收到完整的消息或没有消息。 IP，UDP和WebSockets是消息协议的例子。
 
-   This memo proposes distinct API for bytestream and message protocols.
-   The reason for the design decision is that while the API for the two
-   is superficially similar there is large difference in semantics,
-   especially when it comes to atomicity and error handling.
+   This memo proposes distinct API for bytestream and message protocols. The reason for the design decision is that while the API for the two is superficially similar there is large difference in semantics, especially when it comes to atomicity and error handling.
+这份备忘录为字节流和消息协议提出了不同的API。设计决策的原因是，虽然两者的API表面上是相似的，但语义上有很大差异，特别是在原子性和错误处理方面。
 
-   As an added benefit, the fact that bytestream protocols are always
-   ordered and reliable means that bytestream API provides stronger
-   semantic guarantees than message API.
+   As an added benefit, the fact that bytestream protocols are always ordered and reliable means that bytestream API provides stronger semantic guarantees than message API.
+作为一个额外的好处，字节流协议总是有序和可靠的，这意味着bytestream API提供了比MessageAPI更强的语义保证。
 
-   In theory, the two API could have been unified by treating each byte
-   in a bytestream protocol as a separate message.  In practice,
-
-
-
-Sustrik                  Expires August 5, 2017                 [Page 6]
-
-Internet-Draft            BSD Socket API Revamp            February 2017
-
-
-   however, such API design would prevent batching and would thus result
-   in implementations with inferior throughput characteristics.
+   In theory, the two API could have been unified by treating each byte in a bytestream protocol as a separate message.  In practice, however, such API design would prevent batching and would thus result in implementations with inferior throughput characteristics.
+理论上，通过将字节流协议中的每个字节作为单独的消息处理，这两个API可以被统一。然而，在实践中，这种API设计将防止批处理，从而导致吞吐量特性较差的实现。
 
 4.5.  Connected and unconnected protocols
 
-   From the API point of view the most significant difference between
-   connected protocols such as TCP and unconnected protocols such as UDP
-   is that the former have initialization and termination handshakes
-   while the latter do not.
+   From the API point of view the most significant difference between connected protocols such as TCP and unconnected protocols such as UDP is that the former have initialization and termination handshakes while the latter do not.
+从API的角度来看，连接协议(如TCP)与未连接协议(如UDP)之间最大的区别是前者具有初始化和终止握手，而后者没有。
 
-   This distinction turns out to be critical when contemplating
-   composable microprotocols.  If there are 10 connected microprotocols
-   in the stack and RTT between two endpoints is 100 ms, connection
-   establishment will require at least 10 roundtrips, i.e. one second or
-   more.
+   This distinction turns out to be critical when contemplating composable microprotocols.  If there are 10 connected microprotocols in the stack and RTT between two endpoints is 100 ms, connection establishment will require at least 10 roundtrips, i.e. one second or more.
+在考虑可合成的微协议时，这种区别是至关重要的。如果栈中有10个连接的微协议，且两个端点之间的RTT为100 ms，则连接建立至少需要10次往返，即三次或更多次。
 
-   Latency of this magnitude is often not acceptable.  Even worse, given
-   that RTT is limited by the speed of light, it's not going to get
-   better as technology advances.
+   Latency of this magnitude is often not acceptable.  Even worse, given that RTT is limited by the speed of light, it's not going to get better as technology advances.
+这种程度的延迟通常是不可接受的。更糟糕的是，由于RTT受到光速的限制，它不会随着技术的进步而变得更好。
 
-   Therefore, the only way to get microprotocols with decent performance
-   is to make majority of them unconnected.  In the ideal case there
-   should be at most one connected protocol in any networking stack.
+   Therefore, the only way to get microprotocols with decent performance is to make majority of them unconnected.  In the ideal case there should be at most one connected protocol in any networking stack.
+因此，要获得性能良好的微协议，唯一的方法就是使它们中的大多数不连接。在理想的情况下，在任何网络堆栈中最多应该有一个连接的协议。
 
-   To achieve the goal we'll have to turn even protocols that
-   instinctively feel like connected into unconnected ones.
+   To achieve the goal we'll have to turn even protocols that instinctively feel like connected into unconnected ones.
+为了实现这一目标，我们将不得不将那些本能地感觉像是连接的协议变成不相连的协议。
 
-   Consider a simple keep-alive protocol.  The peers have to agree on a
-   keep-alive interval and thus the intial handshake seems unavoidable.
-   However, if the peers have agreed on the keep-alive interval
-   beforehand they can just pass the number to the API and no initial
-   handshake is required.  We can suddenly think of the protocol as
-   unconnected.
+   Consider a simple keep-alive protocol.  The peers have to agree on a keep-alive interval and thus the intial handshake seems unavoidable. However, if the peers have agreed on the keep-alive interval beforehand they can just pass the number to the API and no initial handshake is required.  We can suddenly think of the protocol as unconnected.
+考虑一个简单的保持生命的协议。同龄人必须就保持生命的间隔达成一致，因此握手似乎不可避免。但是，如果对等方事先就保持活动间隔达成一致，他们可以将该数字传递给api，而不需要进行初始握手。我们可以突然把协议想象成没有关联的。
 
-   Technically, the users could have just met personally and decided on
-   keep-alive interval.  However, it doesn't have to be that way.  In
-   most cases there's a connected protocol in the stack somewhere
-   beneath the keep-alive protocol.  If that connected protocol allows
-   to bundle arbitrary data with its initial handshake we can use it to
-   exchange keep-alive intervals between the peers.  Later on, when
-   instantiating the keep-alive protocol we can pass in the correct
-   number via API.
+   Technically, the users could have just met personally and decided on keep-alive interval.  However, it doesn't have to be that way.  In most cases there's a connected protocol in the stack somewhere beneath the keep-alive protocol.  If that connected protocol allows to bundle arbitrary data with its initial handshake we can use it to exchange keep-alive intervals between the peers.  Later on, when instantiating the keep-alive protocol we can pass in the correct number via API.
+从技术上讲，用户可以亲自会面并决定保持生命间隔。然而，这并不一定是那样的。在大多数情况下，堆栈中有一个连接的协议，位于“保持生存”协议的下面。如果连接协议允许将任意数据与其初始握手捆绑在一起，我们就可以使用它在对等点之间交换保持活动的间隔。稍后，在实例化“保持活动”协议时，我们可以通过api传递正确的数字。
 
-   As for the terminal handshakes, these are critical for horizontal
-   composability of protocols.  To be able to start new protocol on pre-
-   existing connection the old protocol has to be terminated and both
-   peers have to agree on where exactly it have ended.  To do that
-   handshake is needed.
+   As for the terminal handshakes, these are critical for horizontal composability of protocols.  To be able to start new protocol on pre-existing connection the old protocol has to be terminated and both peers have to agree on where exactly it have ended.  To do that handshake is needed.
+对于终端握手，这些都是关键的水平可组合协议。为了能够在预先存在的连接上启动新协议，旧协议必须被终止，并且两个对等方都必须就它到底在哪里结束达成一致。要做到这一点，握手是必要的。
 
+   Assuming there's a connected protocol beneath the user can tear down all the unconnected protocol layers above.  Then they can shut down the connected protocol which will put both peers in sync with respect to where exaclty have the protocol ended.  Afterwards they can open new protocols on top of the remaining layers of the stack.
+假设下面有一个连接的协议，用户可以拆除上面所有未连接的协议层。然后，他们可以关闭连接的协议，这将使两个对等点在协议的确切位置同步。之后，他们可以在堆栈的其余层之上打开新协议。
 
-
-Sustrik                  Expires August 5, 2017                 [Page 7]
-
-Internet-Draft            BSD Socket API Revamp            February 2017
-
-
-   Assuming there's a connected protocol beneath the user can tear down
-   all the unconnected protocol layers above.  Then they can shut down
-   the connected protocol which will put both peers in sync with respect
-   to where exaclty have the protocol ended.  Afterwards they can open
-   new protocols on top of the remaining layers of the stack.
-
-   Each protocol MUST be either connected or unconnected.  A protocol
-   MUST NOT try to support both scenarios.
+   Each protocol MUST be either connected or unconnected.  A protocol MUST NOT try to support both scenarios.
+每个协议必须连接或不连接。协议不能试图支持这两种情况。
 
 4.6.  Scheduling or rather lack of it
 
-   During the decades since BSD sockets were first introduced the way
-   they are used have changed significantly.  While in the beginning the
-   user was supposed to fork a new process for each connection and do
-   all the work using simple blocking calls nowadays they are expected
-   to keep a pool of connections, check them via functions like poll()
-   or kqueue() and dispatch any work to be done to one of the worker
-   threads in a thread pool.  In other words, user is supposed to do
-   both network and CPU scheduling.
+   During the decades since BSD sockets were first introduced the way they are used have changed significantly.  While in the beginning the user was supposed to fork a new process for each connection and do all the work using simple blocking calls nowadays they are expected to keep a pool of connections, check them via functions like poll() or kqueue() and dispatch any work to be done to one of the worker threads in a thread pool.  In other words, user is supposed to do both network and CPU scheduling.
+自 BSD Socket 首次引入以来的几十年中，它们的使用方式发生了重大变化。在开始时，用户应该为每个连接发送一个新的进程，并使用简单的阻塞调用来完成所有的工作，而现在他们需要保持一个连接池。通过函数(如poll()或kqueue())检查它们，并将要完成的任何工作分派给线程池中的一个工作线程。换句话说，用户应该同时执行网络和CPU调度。
 
-   This change happened for performance reasons and haven't improved
-   functionality or usability of BSD socket API in any way.  On the
-   contrary, by requiring every programmer to do system programmer's
-   work it contributed to proliferation of buggy, hard-to-debug and
-   barely maintainable network code.
+   This change happened for performance reasons and haven't improved functionality or usability of BSD socket API in any way.  On the contrary, by requiring every programmer to do system programmer's work it contributed to proliferation of buggy, hard-to-debug and barely maintainable network code.
+这种改变是出于性能原因，没有以任何方式改进BSD套接字API的功能或可用性。相反，通过要求每个程序员做系统程序员的工作，它导致了bug、难以调试和几乎无法维护的网络代码的激增。
 
-   To address this problem, this memo assumes that there already exists
-   an efficient concurrency implementation where forking a new
-   lightweight process takes at most hundreds of nanoseconds and context
-   switch takes tens of nanoseconds.  Note that there are already such
-   concurrency systems deployed in the wild.  One well-known example are
-   Golang's goroutines but there are others available as well.
+   To address this problem, this memo assumes that there already exists an efficient concurrency implementation where forking a new lightweight process takes at most hundreds of nanoseconds and context switch takes tens of nanoseconds.  Note that there are already such concurrency systems deployed in the wild.  One well-known example are Golang's goroutines but there are others available as well.
+为了解决这个问题，这个备忘录假设已经存在一个高效的并发实现，其中分叉新的轻量级进程最多需要数百纳秒，上下文切换需要数十纳秒。请注意，在野外已经部署了这样的并发系统。一个著名的例子是 Golang 的 goroutine，但也有其他的。
 
-   In such environment network programming can be done in the old "one
-   process per connection" way, with all the functions exhibiting
-   blocking behavior.  There's no need for polling, thread pools,
-   callbacks, explicit state machines or similar.
+   In such environment network programming can be done in the old "one process per connection" way, with all the functions exhibiting blocking behavior.  There's no need for polling, thread pools, callbacks, explicit state machines or similar.
+在这种环境下，网络编程可以采用旧的“一次连接”的方式进行，所有的功能都表现出阻塞行为。不需要轮询、线程池、回调、显式状态机或类似的。
 
-   This memo thus adheres to "let system programmers do system
-   programming" maxim and doesn't address the problem of scheduling, be
-   it CPU scheduling or network scheduling, at all.
+   This memo thus adheres to "let system programmers do system programming" maxim and doesn't address the problem of scheduling, be it CPU scheduling or network scheduling, at all.
+因此，这份备忘录坚持“让系统程序员进行系统编程”的原则，根本没有解决调度问题，无论是CPU调度还是网络调度。
 
-   As a footnote, it should be metioned that this proposal makes couple
-   of deliberate design choices that prevent the modern "schedule by
-   hand" style of network programming.
-
+   As a footnote, it should be metioned that this proposal makes couple of deliberate design choices that prevent the modern "schedule by hand" style of network programming.
+作为一个脚注，应该指出，这一建议作出了一些深思熟虑的设计选择，以防止现代“手工安排”的网络编程风格。
 
 
 
@@ -452,49 +275,30 @@ Internet-Draft            BSD Socket API Revamp            February 2017
 
 4.7.  Tx buffering
 
-   Buffering of outbound data and sending them down the stack in batches
-   often results in improved performance.  It is perfectly acceptable
-   for protocol implementation to do so as long as data is flushed when
-   the socket is closed.  The data should also be flushed periodically
-   not to induce unbounded latencies when there are no new outbound data
-   to fill in the buffer.
+   Buffering of outbound data and sending them down the stack in batches often results in improved performance.  It is perfectly acceptable for protocol implementation to do so as long as data is flushed when the socket is closed.  The data should also be flushed periodically not to induce unbounded latencies when there are no new outbound data to fill in the buffer.
+缓冲出站数据并将它们分批发送到堆栈中通常会提高性能。协议实现完全可以接受，只要在套接字关闭时刷新数据即可。当没有新的出站数据来填充缓冲区时，还应该定期刷新数据，以避免导致无限延迟。
 
 4.8.  Rx buffering
 
-   Buffering of inbound data collides with vertical composability of
-   protocols.
+   Buffering of inbound data collides with vertical composability of protocols.
+入站数据的缓冲与协议的垂直可组合性相冲突。
 
-   If protocol reads 1000 bytes of data from the underlying protocol,
-   then protocol above it asks for 700 bytes and closes the socket,
-   there's no way to push the remaining 300 bytes back to the underlying
-   socket.  Allowing for such operation would mean that the buffer of
-   the underlying socket would have to be virtually unbounded.
+   If protocol reads 1000 bytes of data from the underlying protocol, then protocol above it asks for 700 bytes and closes the socket, there's no way to push the remaining 300 bytes back to the underlying socket.  Allowing for such operation would mean that the buffer of the underlying socket would have to be virtually unbounded.
+如果协议从底层协议中读取1000字节的数据，那么上面的协议要求700个字节并关闭套接字，则无法将其余的300个字节推回基础套接字。允许这样的操作将意味着底层套接字的缓冲区几乎必须是无界的。
 
-   If, on the other hand, the remaining bytes were dropped there would
-   be no way to start a new protocol on top of the same underlying
-   socket.  The new protocol would miss initial 300 bytes of data.
+   If, on the other hand, the remaining bytes were dropped there would be no way to start a new protocol on top of the same underlying socket.  The new protocol would miss initial 300 bytes of data.
+另一方面，如果删除了剩余的字节，就无法在同一基础套接字之上启动新协议。新协议将丢失最初300个字节的数据。
 
-   Luckily though, the above reasoning doesn't apply to the bottommost
-   protocol in the stack.  Given that there's no underlying protocol to
-   start a new protocol on top of, the buffered data can be simply
-   dropped.
+   Luckily though, the above reasoning doesn't apply to the bottommost protocol in the stack.  Given that there's no underlying protocol to start a new protocol on top of, the buffered data can be simply dropped.
+幸运的是，上面的推理并不适用于堆栈中最底层的协议。由于没有底层协议来启动新协议，所以可以简单地删除缓冲数据。
 
-   Also, rx buffering on the lowermost level, where the protocol is
-   interfacing with the hardware or with user/kernel space boundary, is
-   likely to provide the largest performance benefits.  Absence of rx
-   buffering on higher levels, where performance impact of additional
-   receive operation is basically that of a function call, is not likely
-   to incur huge performance penalty.  And even more so given that
-   higher layers of the stack are likely to be message-based and thus
-   some amount of batching, proportional to the average message size,
-   happens anyway.
+   Also, rx buffering on the lowermost level, where the protocol is interfacing with the hardware or with user/kernel space boundary, is likely to provide the largest performance benefits.  Absence of rx buffering on higher levels, where performance impact of additional receive operation is basically that of a function call, is not likely to incur huge performance penalty.  And even more so given that higher layers of the stack are likely to be message-based and thus some amount of batching, proportional to the average message size, happens anyway.
+此外，在最底层(协议与硬件或用户/内核空间边界进行接口)上进行RX缓冲可能会带来最大的性能好处。在更高级别上缺乏RX缓冲，而附加接收操作对性能的影响基本上是函数调用的影响，因此不太可能导致巨大的性能损失。更重要的是，考虑到堆栈的较高层很可能是基于消息的，因此无论如何都会发生一些与平均消息大小成比例的批处理。
 
 4.9.  Socket options
 
-   There's no equivalent to socket options as they are known from BSD
-   socket API.  Any such customization of the network stack is supposed
-   to be built by vertically layering the protocols.
-
+   There's no equivalent to socket options as they are known from BSD socket API.  Any such customization of the network stack is supposed to be built by vertically layering the protocols.
+从BSD套接字API中可以知道，没有与套接字选项等效的选项。网络堆栈的任何此类定制都应该通过垂直分层协议来构建。
 
 
 
