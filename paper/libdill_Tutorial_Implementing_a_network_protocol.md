@@ -5,15 +5,19 @@ Introduction
 ------------
 
 In this tutorial you will learn how to implement a simple network protocol using libdill.
+在本教程中，您将学习如何使用libdill实现简单的网络协议。
 
 The source code for individual steps of this tutorial can be found in tutorial/protocol subdirectory.
+本教程的各个步骤的源代码可以在 tutorial/protocol 子目录中找到。
 
 Step 1: Creating a handle
 -------------------------
 
 Handles are libdill's equivalent of file descriptors. A socket implementing our protocol will be pointed to by a handle. Therefore, we have to learn how to create custom handle types.
+句柄是 libdill 的文件描述符。实现我们协议的套接字将由句柄指向。因此，我们必须学习如何创建自定义句柄类型。
 
 Standard include file for libdill is libdill.h . In this case, however, we will include libdillimpl.h which defines all the functions libdill.h does but also adds some extra stuff that can be used to implement different plugins to libdill, such as new handle types or new socket types:
+标准的 libdill 文件是 libdill.h。但是，在本例中，我们将包括 libdilimpl 定义了所有 libdill.h 定义的函数，而且还添加了一些额外的东西，可以用来实现 libdill 的不同插件，例如新句柄类型或新套接字类型：
 
 
 ```
@@ -21,7 +25,7 @@ Standard include file for libdill is libdill.h . In this case, however, we will 
 ```
 
 To make it clear what API we are trying to implement, let's start with a simple test program. We'll call our protocol quux and at this point we will just open and close the handle:
-
+为了弄清楚我们要实现什么 API，让我们从一个简单的测试程序开始。我们将调用我们的协议 quux，此时我们将打开并关闭句柄：
 
 ```
 int main(void) {
@@ -34,6 +38,7 @@ int main(void) {
 ```
 
 To start with the implementation we need a structure to hold data for the handle. At the moment it will contain only handle's virtual function table:
+为了开始实现，我们需要一个结构来保存句柄的数据。目前，它将只包含句柄的虚拟函数表：
 
 ```
 struct quux {
@@ -42,6 +47,7 @@ struct quux {
 ```
 
 Let's add forward declarations for functions that will be filled into the virtual function table. We'll learn what each of them is good for shortly:
+让我们为将被填充到虚拟函数表中的函数添加前向声明。我们将很快了解它们各自的优点：
 
 ```
 static void *quux_hquery(struct hvfs *hvfs, const void *id);
@@ -50,6 +56,7 @@ static int quux_hdone(struct hvfs *hvfs, int64_t deadline);
 ```
 
 The quux_open function itself won't do much except for allocating the object, filling in the table of virtual functions and registering it with libdill runtime:
+quux_open 函数本身除了分配对象、填充虚拟函数表并向 libdill 运行时注册外，不会做太多事情：
 
 ```
 int quux_open(void) {
@@ -71,8 +78,10 @@ error1:
 ```
 
 Function hmake() does the trick. You pass it a virtual function table and it returns a handle. When the standard function like hclose() is called on the handle libdill will forward the call to the corresponding virtual function, in this particular case to quux_hclose() . The interesting part is that the first argument to the virtual function is no longer the handle but rather pointer to the virtual function table. And given that virtual function table is a member of struct quux it's easy to convert it to the pointer to the quux object itself.
+函数 hmake() 起了作用。传递给它一个虚拟函数表，它返回一个句柄。当在句柄上调用标准函数(如 hclose())时，libdill 将将调用转发到相应的虚拟函数，在这种情况下，调用将转到 quux_hclose()。有趣的是，虚拟函数的第一个参数不再是句柄，而是指向虚拟函数表的指针。并且，由于虚拟函数表是 struct quux 的成员，因此很容易将其转换为指向 quux 对象本身的指针。
 
 quux_hclose() virtual function will deallocate the quux object:
+quux_hlose() 虚拟函数将释放 quux 对象：
 
 ```
 static void quux_hclose(struct hvfs *hvfs) {
@@ -82,9 +91,10 @@ static void quux_hclose(struct hvfs *hvfs) {
 ```
 
 At the moment we can just return ENOTSUP from the other two virtual functions.
+目前，我们可以从其他两个虚拟函数返回 ENOTSUP。
 
 Compile the file and run it to test whether it works as expected:
-
+编译该文件并运行它，以测试它是否按预期工作：
 
 ```
 $ gcc -o step1 step1.c -ldill
