@@ -1,0 +1,722 @@
+https://raw.githubusercontent.com/sustrik/dsock/master/rfc/sock-api-revamp-01.txt
+
+
+
+
+Internet Engineering Task Force                          M. Sustrik, Ed.
+Internet-Draft                                             February 2017
+Intended status: Informational
+Expires: August 5, 2017
+
+
+                         BSD Socket API Revamp
+                           sock-api-revamp-01
+
+Abstract
+
+   This memo describes new API for network sockets.  Compared to classic BSD socket API the new API is much more lightweight and flexible. Its primary focus is on easy composability of network protocols.
+此备忘录描述网络套接字的新 API。与传统的 BSD 套接字 API 相比，新的 API 更加轻量级和灵活。它的主要关注点是网络协议的简单可组合性。
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the provisions of BCP 78 and BCP 79.
+本互联网草案完全符合BCP 78和BCP 79的规定。
+
+   Internet-Drafts are working documents of the Internet Engineering Task Force (IETF).  Note that other groups may also distribute working documents as Internet-Drafts.  The list of current Internet-Drafts is at http://datatracker.ietf.org/drafts/current/.
+因特网草案是因特网工程任务组(IETF)的工作文件。请注意，其他小组也可以分发工作文件作为互联网草案。当前因特网草案清单见http://datatracker.ietf.org/drafts/Current/。
+
+   Internet-Drafts are draft documents valid for a maximum of six months and may be updated, replaced, or obsoleted by other documents at any time.  It is inappropriate to use Internet-Drafts as reference material or to cite them other than as "work in progress."
+互联网草案-文件草稿有效期最长为六个月，可以随时被其他文件更新、替换或淘汰。将互联网草案作为参考材料或引用“正在进行的工作”是不适当的。
+
+   This Internet-Draft will expire on August 5, 2017.
+这份互联网草案将于2017年8月5日到期.
+
+Copyright Notice
+
+   Copyright (c) 2017 IETF Trust and the persons identified as the document authors.  All rights reserved.
+版权(C) 2017 年 IETF 信托基金和被确定为文件作者的人。版权所有。
+
+   This document is subject to BCP 78 and the IETF Trust's Legal Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info) in effect on the date of publication of this document.  Please review these documents carefully, as they describe your rights and restrictions with respect to this document.  Code Components extracted from this document must include Simplified BSD License text as described in Section 4.e of the Trust Legal Provisions and are provided without warranty as described in the Simplified BSD License.
+本文件受 BCP 78 和 IETF 信托基金关于 IETF 文件的法律规定(http://trustee.ietf.org/license-info)的约束，该文件在本文件发表之日生效。请仔细审查这些文件，因为它们描述了您对本文件的权利和限制。从本文档中提取的代码组件必须包括信托法律条款第 4.e 节中描述的简化 BSD 许可文本，并且提供时不需要像简化 BSD 许可证中所描述的那样提供保证。
+
+
+
+
+Sustrik                  Expires August 5, 2017                 [Page 1]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  The problems  . . . . . . . . . . . . . . . . . . . . . . . .   3
+   4.  Basic concepts  . . . . . . . . . . . . . . . . . . . . . . .   4
+     4.1.  Vertical composability  . . . . . . . . . . . . . . . . .   4
+     4.2.  Horizontal composability  . . . . . . . . . . . . . . . .   5
+     4.3.  Application and transport protocols . . . . . . . . . . .   5
+       4.3.1.  Application protocols . . . . . . . . . . . . . . . .   5
+       4.3.2.  Presentation protocols  . . . . . . . . . . . . . . .   6
+       4.3.3.  Transport protocols . . . . . . . . . . . . . . . . .   6
+     4.4.  Bytestream and message protocols  . . . . . . . . . . . .   6
+     4.5.  Connected and unconnected protocols . . . . . . . . . . .   7
+     4.6.  Scheduling or rather lack of it . . . . . . . . . . . . .   8
+     4.7.  Tx buffering  . . . . . . . . . . . . . . . . . . . . . .   9
+     4.8.  Rx buffering  . . . . . . . . . . . . . . . . . . . . . .   9
+     4.9.  Socket options  . . . . . . . . . . . . . . . . . . . . .   9
+   5.  The API guidelines  . . . . . . . . . . . . . . . . . . . . .  10
+     5.1.  Protocol naming conventions . . . . . . . . . . . . . . .  10
+     5.2.  Function naming conventions . . . . . . . . . . . . . . .  10
+     5.3.  File descriptors  . . . . . . . . . . . . . . . . . . . .  10
+     5.4.  Deadlines . . . . . . . . . . . . . . . . . . . . . . . .  11
+     5.5.  Protocol initialization . . . . . . . . . . . . . . . . .  11
+     5.6.  Protocol termination  . . . . . . . . . . . . . . . . . .  12
+       5.6.1.  Forceful termination  . . . . . . . . . . . . . . . .  12
+       5.6.2.  Half-close termination  . . . . . . . . . . . . . . .  13
+       5.6.3.  Orderly termination . . . . . . . . . . . . . . . . .  13
+     5.7.  Normal operation  . . . . . . . . . . . . . . . . . . . .  15
+       5.7.1.  Bytestream protocols  . . . . . . . . . . . . . . . .  15
+       5.7.2.  Message protocols . . . . . . . . . . . . . . . . . .  16
+       5.7.3.  Custom sending and receiving functions  . . . . . . .  17
+       5.7.4.  Error codes . . . . . . . . . . . . . . . . . . . . .  18
+   6.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  18
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .  18
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  19
+
+1.  Introduction
+
+   The progress in the area of network protocols is distinctively lagging behind.  While every hobbyist writes and publishes their small JavaScript libraries, there's no such thing going on with network protocols.  Indeed, it looks like the field of network protocols is dominated by big companies and academia, just like programming as a whole used to be before the advent of personal computers.
+网络协议领域的进展明显滞后。虽然每个爱好者都编写和发布他们的小型 JavaScript 库，但是网络协议没有这样的事情发生。事实上，网络协议领域似乎是由大公司和学术界主导的，就像个人电脑出现之前的整个编程一样。
+
+
+
+
+Sustrik                  Expires August 5, 2017                 [Page 2]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+   While social and political reasons may be partly to blame (adoption, interoperability etc.) the technology itself creates a huge barrier to popular participation.  For example, the fact that huge part of the networking stack typically lives in the kernel space will prevent most people from even trying.  More importantly though there is basically no way to reuse what already exists.  While in JavaScript world you can get other people's libraries, quickly glue them together, add a bit of code of your own and publish a shiny new library, you can't do the same thing with network protocols.  You can't take framing from WebSockets, add multihoming from SCTP, keep-alives from TCP and congestion control from DCCP.  You have to write most of the code yourself which requires a lot of time, often more than a single programmer can realistically afford.
+虽然社会和政治原因可能部分要归咎于(采用、互操作性等)，但技术本身对公众参与造成了巨大障碍。例如，网络堆栈的很大一部分通常位于内核空间，这将使大多数人甚至无法尝试。更重要的是，基本上没有办法重用已经存在的东西。在 JavaScript 世界中，您可以获得其他人的库，快速地将它们粘合在一起，添加一些您自己的代码，并发布一个闪亮的新库，但是您不能对网络协议做同样的事情。您不能从 WebSocket 中获取框架、从 SCTP 添加多主机化、不能从 TCP 中保持生命和从 DCCP 获得拥塞控制。您必须自己编写大部分代码，这需要大量的时间，通常比单个程序员实际所能负担的还要多。
+
+   This memo proposes to fix the reusability problem by revamping the old BSD socket API and while doing so strongly focusing on composability of protocols.
+这份备忘录建议通过修改旧的 BSD 套接字 API 来解决可重用性问题，同时大力关注协议的可组合性。
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+
+3.  The problems
+
+   This section offers a brief summary of the problems that protocol implementors are facing in the current environment.
+本节简要总结了协议实现者在当前环境中面临的问题。
+
+   o  The hook-in API to implement new protocols and make them    accessible via standard functions like send() and recv() exists, in most cases, only in the kernel space.  While that makes implementation a little bit harder the real problem is deployment. Kernel is rarely deployed with the application and waiting for a kernel implementation of a protocol to be widely deployed can take many years.
+在大多数情况下，实现新协议并通过标准函数(如 send() 和 recv())访问这些协议的挂钩 API 只存在于内核空间中。虽然这使得实现更加困难，但真正的问题是部署。内核很少与应用程序一起部署，等待协议的内核实现被广泛部署可能需要很多年。
+
+   o  The API hook-in API is not standardized meaning that a protocol has to be implemented for each operating system separately.
+API 挂钩 API 不是标准化的，这意味着必须为每个操作系统分别实现协议。
+
+   o  The usability of the original blocking BSD socket API is dependent one operating system's ability to spawn a lot of threads (e.g. two per TCP connection) and switch between them quickly.  This happens not to be the case with majority of operating systems.  The thread number limit tends to be couple of thousand and the context switch latency is often one or two orders of magnitude higher than what would be acceptable for high-performance networking.  This leads to proliferation of asynchronous network code using non-blocking APIs like poll() which forces the implementor to do both CPU and network scheduling by hand.  High context switch latency is often fought by extreme measures.  For example, by implementing hand-crafted lock-free algorithms.  Ugly, mislayered and barely maintainable code ensues.
+原始阻塞 BSD 套接字 API 的可用性取决于一个操作系统是否能够产生大量线程(例如，每个 TCP 连接两个线程)并在它们之间快速切换。在大多数操作系统中，情况恰好不是这样。线程数量限制往往是几千个，上下文切换延迟通常比高性能网络所能接受的高出一两个数量级。这导致使用非阻塞 API (如 poll())的异步网络代码激增，这迫使实现者手动执行 CPU 和网络调度。高上下文切换延迟通常是通过极端措施来对抗的。例如，通过实现手工构建的无锁算法。接下来是丑陋的、分层错误的和难以维护的代码。
+
+   o  The BSD socket API is semantically underspecified.  The particular points of pain are error handling and behaviour during protocol shutdown.  No fixed semantics to rely on means that higher level protocols are fine-tuned to work with a particular low level protocol (e.g.  TCP) and don't allow to switch it for a different low-level protocol.  The situation is made worse by offering a high number of socket options that modify semantics of the core APIs.
+BSD 套接字 API 在语义上是低级的。 在协议关闭期间，疼痛的特定点是错误处理和行为。 没有固定的语义依赖，意味着更高级别的协议被微调成与特定的低级别协议（例如TCP）一起工作，并且不允许将其切换为不同的低级别协议。 通过提供大量修改核心 API 语义的套接字选项，情况变得更糟。
+
+   o  Scope of BSD socket API is unnecessarily wide.  It attempts to provide standardized way for doing things that would better be done in a customized way.  This results in unnecessarily complex system of extension points: Socket options, ancillary data, fcntl(), various arguments to socket() function.
+BSD 套接字 API 的范围不必要地广泛。 它试图提供标准化的方式做的事情, 最好是以定制的方式做。这导致了不必要的复杂的扩展点系统: 套接字选项、辅助数据、fcntl()、各种参数到 socket() 函数。
+
+   o  Finally, there are some minor ways to improve the socket API which, however, are not a sufficient reason to revamp the API. But if the revamp is to be done anyway these minor issues can be fixed.
+最后，还有一些改进套接字 API 的小方法，但这并不是改进 API 的充分理由。但是，如果改革要做，这些小问题都可以解决。
+
+4.  Basic concepts
+
+4.1.  Vertical composability
+
+   Vertical composability is an ability to stack protocols one on the top of another.  From the network point of view the protocol on the top is a payload of the protocol on the bottom.  From the API point of view the top protocol encapsulates the bottom protocol, very much like a function encapsulates another function that it calls.
+垂直可组合性是将协议堆叠在另一个之上的能力。 从网络的角度来看，顶部的协议是底部协议的负载。 从 API 的角度来看，顶层协议封装底层协议，就像一个函数封装了它所调用的另一个函数。
+
+   Example of vertical stack of protocols:
+协议的垂直栈示例：
+
+                               +----------+
+                               |   HTTP   |
+                               +----------+
+                               |    TCP   |
+                               +----------+
+                               |    IP    |
+                               +----------+
+                               | Ethernet |
+                               +----------+
+
+
+
+
+Sustrik                  Expires August 5, 2017                 [Page 4]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+4.2.  Horizontal composability
+
+   Horizontal composability is an ability to execute protocols in sequential manner.  From the network point of view one type of communication ends and is replaced by another type of communication. From API point of view one protocol is terminated and another one is started, reusing the same underlying protocol, very much like a function can call two child functions in sequence without having to exit itself.
+水平组合性是以顺序方式执行协议的能力。 从网络的角度来看，一种通信结束了，并被另一种通信所取代。 从 API 的角度来看，一个协议终止，另一个协议被启动，重用相同的底层协议，就像一个函数可以依次调用两个子函数，而不必退出本身。
+
+   An example of horizontal composability is how typical web page is trasferred by first doing HTTP handshake, followed by HTML body:
+水平可组合性的一个例子是，首先执行 HTTP 握手，然后是 HTML 主体，从而推断出典型的 Web 页面：
+
+                  +-----------------------------------+
+                  |   HTTP   |          HTML          |
+                  +----------+------------------------+
+                  |                TCP                |
+                  +-----------------------------------+
+
+   Note how this design makes protocol reusable: The same HTTP handshake can be used, for example, to initiate a WebSocket session.
+注意此设计如何使协议可重用：例如，可以使用相同的 HTTP 握手来启动 WebSocket 会话。
+
+   Another example of horizontal composability is how STARTTLS switches non-encrypted protocol into encrypted version of the same protocol.
+水平可组合性的另一个例子是 STARTTLS 如何将非加密协议转换为同一协议的加密版本。
+
+   While these are very visible cases of composing protocols horizontally, the technique is in fact ubiquitous.  For example, most protocols are composed from three distinct mini-protocols: protocol header (initial handshake), protocol body (sending data back and forth) and protocol footer (terminal handshake):
+虽然这些是非常明显的水平组合协议的例子，但这种技术实际上是普遍存在的。例如，大多数协议由三种不同的小协议组成：协议头(初始握手)、协议主体(来回发送数据)和协议页脚(终端握手)：
+
+                  +-----------------------------------+
+                  | Header |       Body      | Footer |
+                  +--------+-----------------+--------+
+                  |                TCP                |
+                  +-----------------------------------+
+
+4.3.  Application and transport protocols
+
+4.3.1.  Application protocols
+
+   Application protocols live on the top of the network stack.  Rather than trasferring raw data they are meant to perform a specific service for the user.  For example, DNS protocol provides name resolution service.
+应用程序协议位于网络堆栈的顶部。它们不是转移原始数据，而是要为用户执行特定的服务。例如，DNS 协议提供名称解析服务。
+
+   Application protocols don't give user a way to send or receive data. They have no standardized API for sending or receiving.  Still, they can be initialized, terminated and layered on top of other protocols. That being the case, relevant parts of this specification still apply to them.
+应用程序协议不给用户发送或接收数据的方法。他们没有标准的 API 来发送或接收。但是，它们可以被初始化、终止和分层在其他协议之上。在这种情况下，本规范的相关部分仍然适用于它们。
+
+4.3.2.  Presentation protocols
+
+   Presentation protocols add structure to data carried by transport protocols (e.g.  ASN.1, JSON, XML).  This proposal doesn't address them in any way.  Either the protocol sends and receives binary data that just happen to be in a structured format in which case it's a standard transport protocol.  Or the protocol exposes special API to browse the structured data in which case it should be treated as an application protocol.
+表示协议为传输协议(例如 ASN.1、JSON、XML)所携带的数据添加了结构。这个提议根本没有解决这些问题。协议发送和接收二进制数据，这些数据恰好是结构化格式，在这种情况下，它是一个标准的传输协议。或者，该协议公开特殊的 API 来浏览结构化数据，在这种情况下，应该将其视为应用程序协议。
+
+4.3.3.  Transport protocols
+
+   The term "transport protocol" in this memo has broader scope than "OSI L4 protocol".  By "transport protocol" we mean anything capable of sending and/or receiving unstructured data, be it TCP, IP or Ethernet.
+本备忘录中的“传输协议”比“OSI L4 协议”的范围更广。“传输协议”是指任何能够发送和/或接收非结构化数据的内容，无论是 TCP、IP 还是以太网。
+
+4.4.  Bytestream and message protocols
+
+   Byte stream protocols are transport protocols that define no message boundaries.  One peer can send 10 bytes, then 8 bytes.  The other peer can read all 18 bytes at once or read 12 bytes first, 6 bytes second.  Bytestream protocols are always reliable (no bytes can be lost) and ordered (bytes are received in the same order they were sent in).  TCP is a classic example of bytestream protocol.
+字节流协议是不定义消息边界的传输协议。一个对等体可以发送 10 个字节，然后 8 个字节。另一方可以一次读取全部 18 个字节，或者先读取 12 个字节，再读取 6 个字节。字节流协议总是可靠的（没有字节可以丢失）并且是有序的（字节按照它们被发送的相同顺序被接收）。 TCP 是字节流协议的典型例子。
+
+   Message protocols are transport protocols that preserve message boundaries.  While message protocols are not necessarily reliable (messages can be lost) or ordered (messages can be received in different order than they were sent in) they are always atomic.  User will receive either complete message or no message.  IP, UDP and WebSockets are examples of message protocols.
+消息协议是保留消息边界的传输协议。虽然消息协议不一定是可靠的（消息可能丢失）或有序的（消息可以以不同的顺序接收），但它们总是原子的。用户将收到完整的消息或没有消息。 IP，UDP 和 WebSockets 是消息协议的例子。
+
+   This memo proposes distinct API for bytestream and message protocols. The reason for the design decision is that while the API for the two is superficially similar there is large difference in semantics, especially when it comes to atomicity and error handling.
+这份备忘录为字节流和消息协议提出了不同的 API。设计决策的原因是，虽然两者的 API 表面上是相似的，但语义上有很大差异，特别是在原子性和错误处理方面。
+
+   As an added benefit, the fact that bytestream protocols are always ordered and reliable means that bytestream API provides stronger semantic guarantees than message API.
+作为一个额外的好处，字节流协议总是有序和可靠的，这意味着字节流 API 提供了比消息 API 更强的语义保证。
+
+   In theory, the two API could have been unified by treating each byte in a bytestream protocol as a separate message.  In practice, however, such API design would prevent batching and would thus result in implementations with inferior throughput characteristics.
+理论上，通过将字节流协议中的每个字节作为单独的消息处理，这两个 API 可以被统一。然而，在实践中，这种 API 设计将防止批处理，从而导致吞吐量特性较差的实现。
+
+4.5.  Connected and unconnected protocols
+
+   From the API point of view the most significant difference between connected protocols such as TCP and unconnected protocols such as UDP is that the former have initialization and termination handshakes while the latter do not.
+从 API 的角度来看，连接协议(如 TCP)与未连接协议(如 UDP)之间最大的区别是前者具有初始化和终止握手，而后者没有。
+
+   This distinction turns out to be critical when contemplating composable microprotocols.  If there are 10 connected microprotocols in the stack and RTT between two endpoints is 100 ms, connection establishment will require at least 10 roundtrips, i.e. one second or more.
+在考虑可合成的微协议时，这种区别是至关重要的。如果栈中有 10 个连接的微协议，且两个端点之间的 RTT 为 100 ms，则连接建立至少需要 10 次往返，即三次或更多次。
+
+   Latency of this magnitude is often not acceptable.  Even worse, given that RTT is limited by the speed of light, it's not going to get better as technology advances.
+这种程度的延迟通常是不可接受的。更糟糕的是，由于 RTT 受到光速的限制，它不会随着技术的进步而变得更好。
+
+   Therefore, the only way to get microprotocols with decent performance is to make majority of them unconnected.  In the ideal case there should be at most one connected protocol in any networking stack.
+因此，要获得性能良好的微协议，唯一的方法就是使它们中的大多数不连接。在理想的情况下，在任何网络堆栈中最多应该有一个连接的协议。
+
+   To achieve the goal we'll have to turn even protocols that instinctively feel like connected into unconnected ones.
+为了实现这一目标，我们将不得不将那些本能地感觉像是连接的协议变成不相连的协议。
+
+   Consider a simple keep-alive protocol.  The peers have to agree on a keep-alive interval and thus the intial handshake seems unavoidable. However, if the peers have agreed on the keep-alive interval beforehand they can just pass the number to the API and no initial handshake is required.  We can suddenly think of the protocol as unconnected.
+考虑一个简单的保活协议。对等端必须就保活的间隔达成一致，因此握手似乎不可避免。但是，如果对等方事先就保活间隔达成一致，他们可以将该数字传递给 API，而不需要进行初始握手。我们可以突然把协议想象成非连接的。
+
+   Technically, the users could have just met personally and decided on keep-alive interval.  However, it doesn't have to be that way.  In most cases there's a connected protocol in the stack somewhere beneath the keep-alive protocol.  If that connected protocol allows to bundle arbitrary data with its initial handshake we can use it to exchange keep-alive intervals between the peers.  Later on, when instantiating the keep-alive protocol we can pass in the correct number via API.
+从技术上讲，用户可以亲自会面并决定保活间隔。然而，这并不一定是那样的。在大多数情况下，栈中有一个连接的协议，位于保活协议的下面。如果连接协议允许将任意数据与其初始握手捆绑在一起，我们就可以使用它在对等点之间交换保活的间隔。稍后，在实例化保活协议时，我们可以通过 API 传递正确的数字。
+
+   As for the terminal handshakes, these are critical for horizontal composability of protocols.  To be able to start new protocol on pre-existing connection the old protocol has to be terminated and both peers have to agree on where exactly it have ended.  To do that handshake is needed.
+对于终端握手，这些都是关键的水平可组合协议。为了能够在预先存在的连接上启动新协议，旧协议必须被终止，并且两个对等方都必须就它到底在哪里结束达成一致。要做到这一点，握手是必要的。
+
+   Assuming there's a connected protocol beneath the user can tear down all the unconnected protocol layers above.  Then they can shut down the connected protocol which will put both peers in sync with respect to where exaclty have the protocol ended.  Afterwards they can open new protocols on top of the remaining layers of the stack.
+假设下面有一个连接的协议，用户可以拆除上面所有未连接的协议层。然后，他们可以关闭连接的协议，这将使两个对等点在协议的确切位置同步。之后，他们可以在栈的其余层之上打开新协议。
+
+   Each protocol MUST be either connected or unconnected.  A protocol MUST NOT try to support both scenarios.
+每个协议必须要么连接要么不连接。协议不能试图支持这两种情况。
+
+4.6.  Scheduling or rather lack of it
+
+   During the decades since BSD sockets were first introduced the way they are used have changed significantly.  While in the beginning the user was supposed to fork a new process for each connection and do all the work using simple blocking calls nowadays they are expected to keep a pool of connections, check them via functions like poll() or kqueue() and dispatch any work to be done to one of the worker threads in a thread pool.  In other words, user is supposed to do both network and CPU scheduling.
+自 BSD Socket 首次引入以来的几十年中，它们的使用方式发生了重大变化。在开始时，用户应该为每个连接发送一个新的进程，并使用简单的阻塞调用来完成所有的工作，而现在他们需要保持一个连接池。通过函数(如 poll() 或 kqueue())检查它们，并将要完成的任何工作分派给线程池中的一个工作线程。换句话说，用户应该同时执行网络和 CPU 调度。
+
+   This change happened for performance reasons and haven't improved functionality or usability of BSD socket API in any way.  On the contrary, by requiring every programmer to do system programmer's work it contributed to proliferation of buggy, hard-to-debug and barely maintainable network code.
+这种改变是出于性能原因，没有以任何方式改进 BSD 套接字 API 的功能或可用性。相反，通过要求每个程序员做系统程序员的工作，它导致了有缺陷、难以调试和几乎无法维护的网络代码的激增。
+
+   To address this problem, this memo assumes that there already exists an efficient concurrency implementation where forking a new lightweight process takes at most hundreds of nanoseconds and context switch takes tens of nanoseconds.  Note that there are already such concurrency systems deployed in the wild.  One well-known example are Golang's goroutines but there are others available as well.
+为了解决这个问题，这个备忘录假设已经存在一个高效的并发实现，其中分叉新的轻量级进程最多需要数百纳秒，上下文切换需要数十纳秒。请注意，在野外已经部署了这样的并发系统。一个著名的例子是 Golang 的 goroutine，但也有其他的。
+
+   In such environment network programming can be done in the old "one process per connection" way, with all the functions exhibiting blocking behavior.  There's no need for polling, thread pools, callbacks, explicit state machines or similar.
+在这种环境下，网络编程可以采用旧的“一次连接”的方式进行，所有的功能都表现出阻塞行为。不需要轮询、线程池、回调、显式状态机或类似的。
+
+   This memo thus adheres to "let system programmers do system programming" maxim and doesn't address the problem of scheduling, be it CPU scheduling or network scheduling, at all.
+因此，这份备忘录坚持“让系统程序员进行系统编程”的原则，根本没有解决调度问题，无论是CPU调度还是网络调度。
+
+   As a footnote, it should be metioned that this proposal makes couple of deliberate design choices that prevent the modern "schedule by hand" style of network programming.
+作为一个脚注，应该指出，这一建议作出了一些深思熟虑的设计选择，以防止现代“手工调度”的网络编程风格。
+
+
+
+
+
+Sustrik                  Expires August 5, 2017                 [Page 8]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+4.7.  Tx buffering
+
+   Buffering of outbound data and sending them down the stack in batches often results in improved performance.  It is perfectly acceptable for protocol implementation to do so as long as data is flushed when the socket is closed.  The data should also be flushed periodically not to induce unbounded latencies when there are no new outbound data to fill in the buffer.
+缓冲出站数据并将它们分批发送到栈中通常会提高性能。协议实现完全可以接受，只要在套接字关闭时刷新数据即可。当没有新的出站数据来填充缓冲区时，还应该定期刷新数据，以避免导致无限延迟。
+
+4.8.  Rx buffering
+
+   Buffering of inbound data collides with vertical composability of protocols.
+入站数据的缓冲与协议的垂直可组合性相冲突。
+
+   If protocol reads 1000 bytes of data from the underlying protocol, then protocol above it asks for 700 bytes and closes the socket, there's no way to push the remaining 300 bytes back to the underlying socket.  Allowing for such operation would mean that the buffer of the underlying socket would have to be virtually unbounded.
+如果协议从底层协议中读取 1000 字节的数据，那么上面的协议要求 700 个字节并关闭套接字，则无法将其余的 300 个字节推回基础套接字。允许这样的操作将意味着底层套接字的缓冲区几乎必须是无界的。
+
+   If, on the other hand, the remaining bytes were dropped there would be no way to start a new protocol on top of the same underlying socket.  The new protocol would miss initial 300 bytes of data.
+另一方面，如果删除了剩余的字节，就无法在同一基础套接字之上启动新协议。新协议将丢失最初 300 个字节的数据。
+
+   Luckily though, the above reasoning doesn't apply to the bottommost protocol in the stack.  Given that there's no underlying protocol to start a new protocol on top of, the buffered data can be simply dropped.
+幸运的是，上面的推理并不适用于栈中最底层的协议。由于没有底层协议来启动新协议，所以可以简单地删除缓冲数据。
+
+   Also, rx buffering on the lowermost level, where the protocol is interfacing with the hardware or with user/kernel space boundary, is likely to provide the largest performance benefits.  Absence of rx buffering on higher levels, where performance impact of additional receive operation is basically that of a function call, is not likely to incur huge performance penalty.  And even more so given that higher layers of the stack are likely to be message-based and thus some amount of batching, proportional to the average message size, happens anyway.
+此外，在最底层(协议与硬件或用户/内核空间边界进行接口)上进行 rx 缓冲可能会带来最大的性能好处。在更高级别上缺乏 rx 缓冲，而附加接收操作对性能的影响基本上是函数调用的影响，因此不太可能导致巨大的性能损失。更重要的是，考虑到栈的较高层很可能是基于消息的，因此无论如何都会发生一些与平均消息大小成比例的批处理。
+
+4.9.  Socket options
+
+   There's no equivalent to socket options as they are known from BSD socket API.  Any such customization of the network stack is supposed to be built by vertically layering the protocols.
+从 BSD 套接字 API 中可以知道，没有与套接字选项等效的选项。网络栈的任何此类定制都应该通过垂直分层协议来构建。
+
+
+
+
+
+
+Sustrik                  Expires August 5, 2017                 [Page 9]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+5.  The API guidelines
+
+5.1.  Protocol naming conventions
+
+   Whenever possible, protocol name in the API SHOULD correspond to the official name of the protocol, not to the name of the protocol implementation.  While this can lead to name clashes the assumption is that single application is not going to use two implementations of the same network protocol.  This rule also provides an incentive to standardize protocol APIs.
+只要有可能，API 中的协议名称应该与协议的正式名称相对应，而不是与协议实现的名称相对应。虽然这可能导致名称冲突，但假设单个应用程序不会使用同一网络协议的两个实现。此规则还鼓励标准化协议 API。
+
+   To make the API less tedious to use, short protocol name, e.g. "ws", SHOULD be preferred to the long name, e.g. "websockets".
+为了减少 API 使用的繁琐性，应该使用短协议名，例如“ws”，而不是长名称，例如“websockets”。
+
+   Given that end users prefer to create full protocol stack using a single function it is desirable to provide them with shrinkwrapped protocols aggregating many microprotocols into a coherent whole.  For example, "websocket" protocol may be composed of TCP protocol and WebSocket protocol itself.  Still, expert users may want to have access to WebSocket protocol as such, without the underlying TCP protocol, say, if they want to run it on top of SCTP or any other alternative transport.  In such cases there is a naming dilemma: Should "websocket" name refer to the TCP+WebSocket aggregate or to the WebSocket alone?  In these cases the implemetors SHOULD always prefer the former solution.
+考虑到终端用户更喜欢使用单个功能创建完整的协议栈，因此需要为他们提供收缩包装协议，将许多微协议聚合成一个连贯的整体。例如，“websocket”协议可以由 TCP 协议和 WebSocket 协议本身组成。不过，专家用户可能希望访问 WebSocket 协议本身，而不使用底层 TCP 协议，例如，如果他们想在 SCTP 或任何其他替代传输之上运行 WebSocket 协议。在这种情况下，存在一个命名难题：“websocket”名称是指 TCP+WebSocket 聚合还是仅指 WebSocket？在这种情况下，实施者应该总是倾向于前者的解决方案。
+
+5.2.  Function naming conventions
+
+   The function names SHOULD be in lowercase and SHOULD be composed of short protocol name and action name separated by underscore (e.g. "tcp_connect").  Of course, in languages other than C the native naming convention should be followed, but even then the name SHOULD contain both short protocol name and action name.
+函数名应该是小写的，并且应该由短协议名和用下划线分隔的动作名称(例如“tcp_connect”)组成。当然，在 C 以外的语言中，应该遵循本机命名约定，但即使这样，名称也应该包含短协议名和操作名。
+
+5.3.  File descriptors
+
+   One of the design goals of this API is to support both kernel space and user space implementations.  One problem with that is that kernel space objects are typically reffered to by file descriptors while POSIX provides no easy way to associate user space objects with file descriptors.
+这个 API 的设计目标之一是支持内核空间和用户空间实现。其中一个问题是，内核空间对象通常由文件描述符重新分配，而 POSIX 提供了将用户空间对象与文件描述符关联起来的不容易的方法。
+
+   Therefore, this specification allows user space implementations to use fake file descriptors (simple integers that kernel space knows nothing about) and does not guarantee that system functions will work with those descriptors.
+因此，该规范允许用户空间实现使用假文件描述符(内核空间不知道的简单整数)，也不保证系统功能将与这些描述符一起工作。
+
+   For example, you cannot count on POSIX close() function to be able to close a socket.  Therefore, hclose() function is introduced which maps directly to close() in kernel-space implementations but can be overriden by custom implementation in a user-space implementation.
+例如，不能指望 POSIX close() 函数能够关闭套接字。因此，引入了 hclose() 函数，它直接映射到内核空间实现中的 close()，但可以被用户空间实现中的自定义实现覆盖。
+
+   Whenever a function acts on a file descriptor, the descriptor SHOULD be passed to the function as its first argument.
+每当函数对文件描述符起作用时，描述符都应作为其第一个参数传递给函数。
+
+5.4.  Deadlines
+
+   Unlike with BSD sockets the deadlines are points in time rather than intervals.  This allows to use the same deadline in multiple calls without need for recomputing the remaining interval:
+与 BSD 套接字不同，最后期限是时间点，而不是间隔。这允许在多个调用中使用相同的截止日期，而无需重新计算剩余的间隔：
+
+       int64_t deadline = now() + 1000;
+       bsend(h, "ABC", 3, deadline);
+       bsend(h, "DEF", 3, deadline);
+
+   All possibly blocking functions MUST accept a deadline.  The deadline SHOULD be passed to the function as its last argument.
+所有可能阻塞的函数都必须接受最后期限。最后期限应作为其最后的参数传递给该函数。
+
+5.5.  Protocol initialization
+
+   A protocol SHOULD be initialized using a protocol-specific "start" function (e.g. "smtp_start").  If protocol runs on top of another protocol the file descriptor of the underlying protocol SHOULD be supplied as the first argument of the function.  The function MAY have arbitrary number of additional arguments.
+协议应该使用特定于协议的“start”函数(例如“smtp_start”)进行初始化。如果协议运行在另一个协议之上，则应该提供底层协议的文件描述符作为函数的第一个参数。该函数可能有任意数量的附加参数。
+
+   The function SHOULD return the file descriptor of the newly created protocol instance.  In case of error it SHOULD close the underlying protocol, return -1 and set errno to the appropriate error.
+函数应该返回新创建的协议实例的文件描述符。如果出现错误，则应关闭基础协议，返回 -1 并将 errno 设置为适当的错误。
+
+   Some protocols require more complex setup.  Consider TCP's listen/connect/accept connection setup process.  These protocols SHOULD use custom set of functions rather than try to shoehorn all the functionality into a single all-purpose "start" function.
+有些协议需要更复杂的设置。考虑 TCP 的 listen/connect/accept 连接设置过程。这些协议应该使用自定义的函数集，而不是试图将所有的功能压缩到一个通用的“start”函数中。
+
+   If protocol runs on top of an underlying protocol it takes ownership of that protocol.  Using the low level protocol while it is owned by a higher level protocol will result in undefined behaviour.  A sane way to implement this behaviour is to create a duplicate of the underlying file descriptor to be owned by the parent protocol and closing the original file descriptor.  That way, user accidentally using a lower level protocol will get an EBADF error.
+如果协议运行在底层协议之上，那么它就拥有该协议的所有权。使用低级别协议时，它属于较高级别的协议，将导致未定义的行为。实现此行为的一种明智方法是创建基础文件描述符的副本，由父协议拥有并关闭原始文件描述符。这样，用户不小心使用较低级别的协议将得到 EBADF 错误。
+
+   If protocol requires an initial handshake it MUST be performed in this phase of the socket lifecycle.
+如果协议需要初始握手，则必须在套接字生命周期的此阶段执行。
+
+   Example of creating a stack of four protocols:
+创建由四个协议组成的堆栈的示例：
+
+       int s1 = tcp_connect("192.168.0.111:5555", -1);
+       int s2 = foo_start(s1, arg1, arg2, arg3);
+       int s3 = bar_start(s2);
+       int s4 = baz_start(s3, arg4, arg5);
+
+5.6.  Protocol termination
+
+   There are several types of termination that will be discussed in following sections:
+有几种类型的终止将在以下章节中讨论：
+
+   o  Forceful termination means that the user wants to shut down the socket abruptly without even letting the peer know.  Forceful termination is always a non-blocking operation.
+强制终止意味着用户想要突然关闭套接字，而不让对等方知道。强制终止总是一种非阻塞操作。
+
+   o  Half-close termination means that outbound half of the connection is closed by the user and the terminal handshake, if supported by the protocol, is initiated.  However, the user is still able to receive data from the peer.
+半关闭终止意味着出站连接的一半由用户关闭，如果协议支持，则启动终止握手。但是，用户仍然能够从对等方接收数据。
+
+   o  Orderly termination means that terminal handshake with the peer, if required by the protocol, is performed.  Orderly termination leaves both peers with a consistent view of the world.
+有序终止意味着如果协议要求，与对等方进行终端握手。有秩序的终止让两个同行对世界有了一致的看法。
+
+5.6.1.  Forceful termination
+
+   To perform forceful termination protocol descriptor is closed by hclose() function.  In kernel-space implementations this function maps directly to standard POSIX close() function.  The protocol MUST shut down immediately without trying to do termination handshake. Note that this is different from how classic BSD sockets behave.
+若要执行强制终止协议描述符，则由 hclose() 函数关闭。在内核空间实现中，此函数直接映射到标准的 POSIX close() 函数。协议必须立即关闭，而不试图进行终止握手。请注意，这与经典的 BSD 套接字的行为不同。
+
+   The protocol MUST also clean up all resources it owns including closing the underlying protocol.  Given that the underlying protocol does the same operation, an entire stack of protocols can be shut down recursivelly by closing the file descriptor of the topmost protocol:
+协议还必须清理它拥有的所有资源，包括关闭底层协议。假定底层协议执行相同的操作，则可以通过关闭最顶层协议的文件描述符递归关闭整个协议堆栈：
+
+       int h1 = foo_start();
+       int h2 = bar_start(h1);
+       int h3 = baz_start(h2);
+       hclose(h3); /* baz, bar and foo are shut down */
+
+   In case of success hclose() returns zero.  In case of error it returns -1 and sets errno to appropriate value.
+如果成功，hclose() 将返回零。如果出现错误，则返回 -1 并将 errno 设置为适当的值。
+
+
+
+
+Sustrik                  Expires August 5, 2017                [Page 12]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+5.6.2.  Half-close termination
+
+   The primary use case for half-closing a connection is when user wants to close a connection, yet still wants to receive all the data sent by the peer prior to the termination.
+连接半关闭的主要用例是用户希望关闭连接，但仍然希望在终止之前接收对等方发送的所有数据。
+
+   To do so function hdone() is used.  It is roughly equivalent to POSIX shutdown(SHUT_WR) function.
+为此，使用函数 hdone()。它大致相当于 POSIX shutdown(Shut_WR) 函数。
+
+   hdone() first of all flushes any buffered outbound data.  What happens next depends on whether the protocol is connected or unconnected.
+首先，hdone() 会刷新任何缓冲的出站数据。接下来发生的事情取决于协议是连接的还是未连接的。
+
+   For unconnected protocols the implementation MUST forward the call to the underlying socket.  If the protocol is at the bottom of the stack and there is no underlying socket it MUST return ENOTSUP error.
+对于未连接的协议，实现必须将调用转发到基础套接字。如果协议位于栈底部，并且没有基础套接字，则必须返回 ENOTSUP 错误。
+
+   For connected protocols the implementation MUST start termination handshake and return to the caller without waiting for the answer from the peer.
+对于连接的协议，实现必须开始终止握手并返回给调用方，而无需等待对等方的答复。
+
+   After hdone() is called, any further calls to hdone() or attemps to send more data MUST result in EPIPE error.
+在调用 hdone() 之后，任何进一步调用 hdone() 或尝试发送更多数据都必须导致 EPIPE 错误。
+
+   However, user is still able to receive more data from the socket.
+但是，用户仍然能够从套接字接收更多数据。
+
+   Following piece of code shows typical usage do hdone().  It half-closes the connection, receives any pending messages from the peer and finally closes the socket:
+下面的代码显示了 hdone() 的典型用法。它半关闭连接，接收来自对等方的任何挂起的消息，最后关闭套接字：
+
+       hdone(s);
+       while(1) {
+           int rc = mrecv(s, &msg, sizeof(msg), -1);
+           if(rc < 0 && errno == EPIPE) break;
+           process_msg(&msg);
+       }
+       hclose(s);
+
+   hdone() function returns 0 on success.  In case of error the function MUST forcibly close the underying protocol (and thus recursively all protocols beneath it), return -1 and set errno to the appropriate value.
+函数在成功时返回 0。如果出现错误，该函数必须强制关闭底层协议(从而递归地关闭其下面的所有协议)，返回 -1 并将 errno 设置为适当的值。
+
+5.6.3.  Orderly termination
+
+   To perform an orderly shut down there SHOULD be a protocol-specific function called "stop" (e.g. "smtp_stop").
+要执行有序的关闭，应该有一个特定于协议的函数“stop”(例如“smtp_stop”)。
+
+   In addition to the file descriptor the function can have arbitrary number of other arguments.  For example, one such argument may be a "shutdown reason" string to be sent to the peer.  However, it is RECOMMENDED to avoid such additional arguments in newly designed protocols.  The reason is that such arguments cannot be passed to hdone() function, making half-close termination functionally inferior to orderly termination.
+除了文件描述符之外，函数还可以有任意数量的其他参数。例如，其中一个参数可能是要发送给对等方的“关闭原因”字符串。但是，建议在新设计的协议中避免这种附加论点。原因是这样的参数不能传递给 hdone() 函数，使得半封闭终止在功能上不如有序终止。
+
+   If the shut down functionality is potentially blocking the last argument of the function SHOULD be a deadline.
+如果关闭功能可能会阻塞，则函数的最后一个参数应该是最后期限。
+
+   First thing hclose() should do is to check whether hdone() was called by the user beforehand and if not so, to invoke it itself.
+首先，hclose() 应该检查用户事先是否调用了 hdone()，如果没有，则调用它本身。
+
+   If hdone() returns error other than ENOTSUP the socket MUST be torn down and the error MUST be forwarded to the caller.
+如果 hdone() 返回 ENOTSUP 以外的错误，则必须拆卸套接字，并且必须将错误转发给调用方。
+
+   If hdone() returns ENOTSUP error the implementation MUST simply procceed further without reading any messages from the peer.
+如果 hdone() 返回 ENOTSUP 错误，则实现必须进一步执行，而不读取来自对等方的任何消息。
+
+   If hdone() succeeds the implementation must read and drop any pending messages from the peer.  Note that there is a possible DoS attack here: The peer can send infinite number of messages.  Therefore, the implementation MUST observe the deadline and tear down the socket in case it runs out of time.  ETIMEDOUT error is then returned to the user.
+如果 hdone() 成功，则实现必须读取并删除来自对等方的任何挂起的消息。请注意，这里有一个可能的 DoS 攻击：对等方可以发送无限数量的消息。因此，实现必须遵守最后期限，并在套接字用完时撕毁套接字。然后将 ETIMEDOUT 错误返回给用户。
+
+   At this point the implementation should deallocate the socket. However, it SHOULD NOT close the underlying protocol.  Instead it SHOULD return its file descriptor to the user.  This is crucial for horizontal composability of the protocols:
+此时，实现应该释放套接字。然而，它不应该关闭底层协议。相反，它应该将底层协议的文件描述符返回给用户。这对于协议的横向可组合性至关重要：
+
+       /* create stack of two protocols */
+       h1 = foo_start();
+       h2 = bar_start(h1);
+       /* top protocol is closed but bottom one is still alive */
+       h1 = bar_stop(h2, -1);
+       /* new top protocol is started */
+       h3 = baz_start(h1);
+       /* shut down both protocols */
+       h1 = baz_stop(h3, -1);
+       foo_stop(h1, -1);
+
+   If protocol lives at the very bottom of the stack and has no underlying protocol "stop" function MUST return 0 on success.
+如果协议位于栈的最底层，并且没有底层协议，则“stop”函数必须在成功时返回 0。
+
+   In the case of error stop function MUST forcibly close the underying protocol (and thus recursively all protocols beneath it), return -1 and set errno to the appropriate value.
+如果出现错误，stop 函数必须强制关闭底层协议(因此递归地关闭其下面的所有协议)，返回 -1 并将 errno 设置为适当的值。
+
+   Note that this design of orderly termination does away with BSD socket SO_LINGER behaviour, which is problematic as it cannot be implemented cleanly in user space.
+请注意，这种有序终止的设计消除了 BSD 套接字 SO_LINGER 行为，这是有问题的，因为它不能在用户空间中清晰地实现。
+
+【当调用 close 关闭时套接字时，如何处理残留在套接字发送队列的数据呢？默认是丢弃，而 SO_LINGER 则是将数据继续发送对等端，优雅关闭连接，需要指定一个优雅关闭最长时延】
+
+5.7.  Normal operation
+
+   Everything that happens between protocol initialization and protocol termination will be referred to as "normal operation".
+在协议初始化和协议终止之间发生的一切都将被称为“正常操作”。
+
+   As already mentioned, application protocols can't send or receive data.  Trying to invoke any of the functions below on an application protocol MUST result in ENOTSUP error.
+如前所述，应用程序协议不能发送或接收数据。尝试在应用程序协议上调用下面的任何函数必然会导致 ENOTSUP 错误。
+
+   Transport protocols are either bystestream protocols or message protocols.
+传输协议要么是字节流协议，要么是消息协议。
+
+5.7.1.  Bytestream protocols
+
+   Bytestream protocols can be used via following four functions:
+字节流协议可以通过以下四个函数使用：
+
+       int bsend(int h, const void *buf, size_t len,
+           int64_t deadline);
+       int brecv(int h, void *buf, size_t len,
+           int64_t deadline);
+       int bsendv(int h, const struct iovec *iov, size_t iovlen,
+           int64_t deadline);
+       int brecvv(int h, const struct iovec *iov, size_t iovlen,
+           int64_t deadline);
+
+   Function bsend() sends data to the protocol.  The protocol SHOULD send them, after whatever manipulation is required, to its underlying protocol.  Eventually, the bottommost protocol in the stack sends the data to the network.
+函数 bsend() 向协议发送数据。无论需要什么操作，协议都应该将它们发送到它的底层协议。最后，栈中的最底层协议将数据发送到网络。
+
+   Function brecv() reads data from the protocol.  The protocol SHOULD read them from the underlying socket and after whetever required manipulation is done return them to the caller.  The bottommost protocol in the stack reads the data from the network.
+函数 brecv() 从协议中读取数据。协议应该从底层套接字中读取它们，在完成轮询程序所需的操作之后，将它们返回给调用方。栈中的最底层协议从网络中读取数据。
+
+   All the functions above MUST be blocking and exhibit atomic behaviour.  I.e. either all data are sent/received or none of them are.  In the later case protocol MUST be marked as broken, errno MUST be set to appropriate value and -1 MUST be returned to the user.  Any subsequent attempt to use the protocol MUST result in an error.
+上述所有函数都必须阻塞并显示原子行为。也就是说，要么所有数据都被发送/接收，要么没有任何数据被发送/接收。在后一种情况下，必须将协议标记为已损坏，errno 必须设置为适当的值，-1 必须返回给用户。任何以后使用协议的尝试都必须导致错误。
+
+   Expired deadline is considered to be an error and the protocol MUST behave as described above and set errno to ETIMEDOUT.
+过期的最后期限被认为是一个错误，协议必须像上面所描述的那样运行，并将 errno 设置为 ETIMEDOUT。
+
+   In case of success all the functions MUST return zero.
+如果成功，所有函数都必须返回零。
+
+   Functions bsendv() and brecvv() MUST behave in the same way as bsend() and brecv(), the only difference being that buffers are passed to the functions via scatter/gather arrays, same way as in POSIX sendmsg() and recvmsg() functions.
+函数 bsendv() 和 brecvv() 必须以与 bsend() 和 brecv() 相同的方式运行，唯一的区别是缓冲区通过分散/聚集数组传递给函数，与 POSIX sendmsg() 和 recvmsg() 函数的方式相同。
+
+   Note that the implementations of brecv() and brecvv() MAY change the content of the buffer supplied to the function even in the case of error.  However, what exaclty will be written into the buffer is unpredictable and using such data will result in undefined behaviour.
+请注意，即使在出现错误的情况下，brecv() 和 brecvv() 的实现也可能更改提供给函数的缓冲区的内容。然而，准确地写入缓冲区的内容是不可预测的，使用这些数据将导致未定义的行为。
+
+5.7.2.  Message protocols
+
+   Message protocols can be used via following four functions:
+消息协议可通过以下四种函数使用：
+
+       int msend(int s, const void *buf, size_t len,
+           int64_t deadline);
+       ssize_t mrecv(int h, void *buf, size_t len,
+           int64_t deadline);
+       int msendv(int s, const struct iovec *iov, size_t iovlen,
+           int64_t deadline);
+       ssize_t mrecvv(int s, const struct iovec *iov, size_t iovlen,
+           int64_t deadline);
+
+   Function msend() sends message to the protocol.  The protocol SHOULD send it, after whatever manipulation is required, to its underlying protocol.  Eventually, the lowermost protocol in the stack sends the data to the network.
+函数 msend() 向协议发送消息。无论需要什么操作，协议都应该将它发送到它的底层协议。最后，栈中最底层的协议将数据发送到网络。
+
+   Function mrecv() reads message from the protocol.  The protocol SHOULD read it from its underlying protocol and after whetever manipulation is needed return it to the caller.  The lowermost protocol in the stack reads the data from the network.
+函数 mrecv() 从协议中读取消息。该协议应该从其底层协议中读取它，在需要轮询操作之后，将其返回给调用方。栈中最底层的协议从网络中读取数据。
+
+   All the functions MUST be blocking and exhibit atomic behaviour. I.e. either entire message is sent/received or none of it is.  In the later case errno MUST be set to appropriate value and -1 MUST be returned to the user.  The protocol may be recoverable in which case receiving next message after an error is possible.  In can also be non-recoverable in which the protocol MUST be marked as broken and any subsequent attempt to use it MUST result in an error.
+所有的函数都必须阻塞并显示原子行为。也就是说，要么整个消息被发送/接收，要么没有一个消息被发送/接收。在后一种情况下，errno 必须设置为适当的值，-1 必须返回给用户。该协议可以恢复，在这种情况下，在可能发生错误之后接收下一条消息。也可以是不可恢复的，其中协议必须被标记为破坏，并且以后任何使用它的尝试都必须导致错误。
+
+   Note that unlike with bytestream sockets the buffer supplied to mrecv() doesn't have to be fully filled in, i.e. received messages may be smaller than the buffer.
+注意，与字节流套接字不同，提供给 mrecv() 的缓冲区不必完全填充，即接收到的消息可能小于缓冲区。
+
+   If the message is larger than the buffer, it is considered to be an error and the protocol must return -1 and set errno to EMSGSIZE.  If there's no way to discard the unread part of the message in constant time it SHOULD also mark the protocol as broken and refuse any further operations.  This behaviour prevents DoS attacks by sending very large messages.
+如果消息大于缓冲区，则它被视为错误，协议必须返回 -1 并将 errno 设置为 EMSGSIZE。如果无法在固定时间内丢弃消息的未读部分，则还应将协议标记为已破坏，并拒绝任何进一步的操作。这种行为防止通过发送非常大的消息的 DoS 攻击。
+
+   Expired deadline is considered to be an error and the protocol MUST return ETIMEDOUT error.
+过期的截止日期被认为是错误，协议必须返回 ETIMEDOUT 错误。
+
+   In case of success msend() function MUST return zero, mrecv() MUST return the size of the received message, zero being a valid size.
+如果成功，msend() 函数必须返回零，mrecv() 必须返回接收消息的大小，零是有效大小。
+
+   Functions msendv() and mrecvv() MUST behave in the same way as msend() and mrecv().  The only difference is that buffers are passed to the functions via scatter/gather arrays, same way as in POSIX sendmsg() and recvmsg() functions.
+函数 msendv() 和 mrecvv() 的行为必须与 msend() 和 mrecv() 相同。唯一的区别是缓冲区通过分散/聚集数组传递给函数，就像 POSIX sendmsg() 和 recvmsg() 函数一样。
+
+   Note that the implementations of mrecv() and mrecvv() MAY change the content of the buffer supplied to the function even in the case of error.  However, what exaclty will be written into the buffer is unpredictable and using such data will result in undefined behaviour.
+请注意，mrecv() 和 mrecvv() 的实现可能会更改提供给函数的缓冲区的内容，即使在出现错误的情况下也是如此。然而，准确地写入缓冲区的内容是不可预测的，使用这些数据将导致未定义的行为。
+
+5.7.3.  Custom sending and receiving functions
+
+   In addition to send/recv functions described above, protocols MAY implement their own custom send/recv functions.  These functions should be called "send" and/or "recv" (e.g.  "udp_send").
+除了上面描述的 send/recv 函数之外，协议还可以实现它们自己的自定义 send/recv 函数。这些函数应该称为“send”和/或“recv”(例如“udp_send”)。
+
+   Custom functions allow for providing additional arguments.  For example, UDP protocol may implement custom send function with additional "destination IP address" argument.
+自定义函数允许提供附加参数。例如，UDP 协议可以使用附加的“目的IP地址”参数实现自定义 send 函数。
+
+   A protocol MAY implement multiple send or receive functions as needed.
+协议可以根据需要实现多个发送或接收函数。
+
+   Protocol implementors should try to make custom send/recv functions as consistent with standard send/recv as possible.
+协议实现者应尽量使自定义 send/recv 函数与标准 send/recv 尽可能一致。
+
+   Standard send/recv functions SHOULD fill in arguments otherwise provided in custom send/recv by sensible defaults.  It MAY be possible to set those defaults via "start" function.
+标准的 send/recv 函数应该填写参数，否则在自定义 send/recv 中由合理的默认值提供。可以通过“start”函数设置这些默认值。
+
+
+
+
+Sustrik                  Expires August 5, 2017                [Page 17]
+
+Internet-Draft            BSD Socket API Revamp            February 2017
+
+
+5.7.4.  Error codes
+
+   Send and receive function may return following error codes:
+发送和接收函数可能返回以下错误代码：
+
+   o  EBADF: Bad file descriptor.
+糟糕的文件描述符。
+
+   o  ECONNRESET: Connection broken.  For example, a failure to receive a keepalive from the peer may result in this error.
+连接中断。例如，未能从对等方接收一个保持活动的消息可能会导致此错误。
+
+   o  EMSGSIZE: Message is too large to fit into the supplied buffer. Applies only to mrecv() and mrecvv().
+消息太大，无法容纳到提供的缓冲区中。只适用于 mrecv() 和 mrecvv()。
+
+   o  ENOTSUP: The socket does not support the function.  For example, msend() was called on a bytestream socket or mrecv() was called on send-only socket.
+套接字不支持该函数。例如，在字节流套接字上调用 msend()，或者在仅发送的套接字上调用 mrecv()。
+
+   o  EPIPE: The peer have closed the connection.
+对等方已经关闭了连接。
+
+   o  EPROTO: The peer has violated the protocol specification.
+对等方违反了协议规范。
+
+   o  ETIMEDOUT: Deadline expired.
+截止日期已过。
+
+   As already mentioned some protocols MAY treat errors as unrecoverable.  In these cases any subsequent operation on the socket MUST return the same error.
+如前所述，一些协议可能会将错误视为不可恢复的。在这种情况下，套接字上的任何后续操作都必须返回相同的错误。
+
+   The implementation SHOULD NOT go into great lengths to implement recoverable errors.  Instead, it should stick to the most natural semantics for the protocol.  For example, EMSGSIZE may seem to be a recoverable error, however, the implementation may have to allocate arbitrary amount of memory to temporarily store the already received part of the message which could in turn enable DoS attacks by sending large messages.  It may thus be preferable to keep these errors unrecoverable.
+实现不应该花费很长的时间来实现可恢复的错误。相反，它应该坚持协议最自然的语义。例如，EMSGSIZE 似乎是一个可恢复的错误，然而，实现可能必须分配任意数量的内存来临时存储消息中已经接收到的部分，从而通过发送大型消息来启用 DoS 攻击。因此，最好保持这些错误无法恢复。
+
+6.  IANA Considerations
+
+   This memo includes no request to IANA.
+
+【IANA 国际互联网代理成员管理局，一个负责对 IP 地址分配规划以及对 TCP/UDP 公共服务的端口定义的机构】
+
+7.  Security Considerations
+
+   Network APIs can facilitate DoS attacks by allowing for unlimited buffer sizes and for infinite deadlines.
+网络 API 可以通过允许无限的缓冲区大小和无限的截止日期来方便 DoS 攻击。
+
+   This proposal avoids the first issue by requiring the user to allocate all the buffers.  It addresses the second problem by always making the deadline explicit.  Also, by not requiring recomputation of timeout intervals it makes the deadlines easy to use.  The user should take advantage of that and set reasonable timeout for every network operation.
+此建议通过要求用户分配所有缓冲区来避免第一个问题。通过总是明确规定最后期限解决第二个问题。此外，由于不需要重新计算超时间隔，它使最后期限更容易使用。用户应该利用这一点，为每个网络操作设置合理的超时。
+
+   Other than that, the security implications of the new API don't differ from security implications of classic BSD socket API.  Still, it may be worth passing the design through a security audit.
+除此之外，新 API 的安全含义与经典的 BSD 套接字 API 的安全含义并没有什么不同。不过，通过安全审核传递设计可能是值得的。
+
+Author's Address
+
+   Martin Sustrik (editor)
+
+   Email: sustrik@250bpm.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Sustrik                  Expires August 5, 2017                [Page 19]
