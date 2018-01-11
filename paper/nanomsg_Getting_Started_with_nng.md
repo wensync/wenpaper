@@ -1,7 +1,5 @@
 http://nanomsg.org/gettingstarted/nng/index.html
 
-[TOC]
-
 Getting Started with 'nng'
 ==========================
 
