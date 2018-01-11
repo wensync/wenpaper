@@ -784,7 +784,7 @@ static ssize_t quux_mrecvl(struct msock_vfs *mvfs,
 
 Virtual function hdone() is supposed to start the terminal handshake. However, it is not supposed to wait till it is finished. The semantics of hdone() are "user is not going to send any more data". You can think of it as of EOF marker of a kind.
 
-虚拟函数 hdone() 应该启动终端握手。然而，它不应该等到它完成。hdone() 的语义是“用户不会再发送任何数据”。你可以把它看作是一种 EOF 标记。
+虚函数 hdone() 应该启动终止握手。然而，它不应该等到它完成。hdone() 的语义是“用户不会再发送任何数据”。你可以把它看作是一种 EOF 标记。
 
 ```
 static int quux_hdone(struct hvfs *hvfs, int64_t deadline) {
@@ -834,7 +834,7 @@ error:
 
 Note how the socket, including the underlying socket, is closed when the function fails.
 
-注意，当函数失败时，套接字(包括基础套接字)是如何关闭的。
+注意，当函数失败时，套接字(包括底层套接字)是如何关闭的。
 
 Adjust the test, compile and run. You are done with the tutorial. Have fun writing your own network protocols!
 
