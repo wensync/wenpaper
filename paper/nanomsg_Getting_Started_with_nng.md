@@ -8,7 +8,11 @@ Messaging Patterns
 
 nng is a messaging framework that attempts to help solve common messaging problems with one of a few patterns ('protocols' in nng parlance.)
 
+NNG是一个消息传递框架，它试图用少数几种模式(nng 术语中的“协议”)之一帮助解决常见的消息传递问题。
+
 Following are examples of each pattern type in C.
+
+下面是 C 中每种模式类型的示例。
 
 Pipeline (A One-Way Pipe)
 -------------------------
@@ -16,6 +20,8 @@ Pipeline (A One-Way Pipe)
 [image]
 
 This pattern is useful for solving producer/consumer problems, including load-balancing. Messages flow from the push side to the pull side. If multiple peers are connected, the pattern attempts to distribute fairly.
+
+这种模式对于解决生产者/消费者的问题很有用，包括负载平衡。消息从推送侧流到拉侧。如果连接了多个对等点，则该模式试图公平分发。
 
 pipeline.c
 ```C
@@ -129,6 +135,8 @@ Request/Reply (I ask, you answer)
 [image]
 
 Request/Reply is used for synchronous communications where each question is responded with a single answer, for example remote procedure calls (RPCs). Like Pipeline, it also can perform load-balancing. This is the only reliable messaging pattern in the suite, as it automatically will retry if a request is not matched with a response.
+
+请求/答复用于同步通信，其中每个问题都用一个单一的答案来回答，例如远程过程调用(RPC)。和管道一样，它也可以执行负载平衡。这是套件中唯一可靠的消息传递模式，因为如果请求与响应不匹配，它将自动重试。
 
 reqprep.c
 ```C
@@ -262,6 +270,8 @@ Pair (Two Way Radio)
 
 The pair pattern is used when there a one-to-one peer relationship. Only one peer may be connected to another peer at a time, but both may speak freely.
 
+当存在一对一的对等关系时，使用对模式。一次只有一个对等点可以连接到另一个对等点，但两者都可以自由地说话。
+
 pair.c
 ```C
 #include <stdio.h>
@@ -394,6 +404,8 @@ Pub/Sub (Topics & Broadcast)
 [image]
 
 This pattern is used to allow a single broadcaster to publish messages to many subscribers, which may choose to limit which messages they receive.
+
+此模式用于允许单个广播者向许多订阅者发布消息，这些订阅者可能选择限制他们接收的消息。
 
 pubsub.c
 ```C
@@ -540,6 +552,8 @@ Survey (Everybody Votes)
 [image]
 
 The surveyor pattern is used to send a timed survey out, responses are individually returned until the survey has expired. This pattern is useful for service discovery and voting algorithms.
+
+测量者模式用于发送一个定时的测量，回复被个别地返回，直到调查结束。这种模式对于服务发现和投票算法非常有用。
 
 survey.c
 ```C
@@ -707,6 +721,8 @@ Bus (Routing)
 [image]
 
 The bus protocol is useful for routing applications, or for building fully interconnected mesh networks. In this pattern, messages are sent to every directly connected peer.
+
+总线协议对于路由应用程序或构建完全互联的多跳网络非常有用。在这种模式中，消息被发送到每个直接连接的对等点。
 
 bus.c
 ```C
