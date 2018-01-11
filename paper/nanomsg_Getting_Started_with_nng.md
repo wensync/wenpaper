@@ -4,14 +4,14 @@ http://nanomsg.org/gettingstarted/nng/index.html
 Getting Started with 'nng'
 ==========================
 
+[TOC]
+
 Messaging Patterns
 ------------------
 
 nng is a messaging framework that attempts to help solve common messaging problems with one of a few patterns ('protocols' in nng parlance.)
 
 Following are examples of each pattern type in C.
-
-[TOC]
 
 Pipeline (A One-Way Pipe)
 -------------------------
